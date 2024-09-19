@@ -16,5 +16,5 @@ class LogisticRegressionModel(nn.Module):
 
     def predict(self, x, threshold=0.5):
         proba = self.predict_proba(x)
-        return (proba >= threshold).float()
+        return (proba >= threshold).float().squeeze(1)
 

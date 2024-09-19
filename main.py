@@ -97,15 +97,13 @@ def evaluate(model: nn.Module, test_data: pd.DataFrame):
 
     with torch.no_grad():
         for data, target in test_loader:
-            output = model(data)
+            output = model.predict(data)
             predictions.extend(output.tolist())
             targets.extend(target.tolist())
 
     auc = roc_auc_score(targets, predictions)
-    sensitivity = recall_score(targets, [1 if p >= 0.5 else 0 for p in predictions])
-    specificity = recall_score(
-        targets, [1 if p >= 0.5 else 0 for p in predictions], pos_label=0
-    )
+    sensitivity = recall_score(targets, predictions)
+    specificity = recall_score(targets, predictions, pos_label=0)
     gmean = (sensitivity * specificity) ** 0.5
 
     return auc, gmean
