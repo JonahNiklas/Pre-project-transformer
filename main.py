@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 
 import logging
+from sklearn.metrics import roc_auc_score, precision_score, recall_score, fbeta_score
 logger = logging.getLogger(__name__)
 
 models = [
@@ -42,6 +43,24 @@ def train(model: nn.Module, data: pd.DataFrame):
             loss.backward()
             optimizer.step()
 
+def evaluate(model: nn.Module, test_data: pd.DataFrame):
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=64, shuffle=False)
+    model.eval()
+    predictions = []
+    targets = []
+
+    with torch.no_grad():
+        for data, target in test_loader:
+            output = model(data)
+            predictions.extend(output.tolist())
+            targets.extend(target.tolist())
+
+    auc = roc_auc_score(targets, predictions)
+    precision = precision_score(targets, [1 if p >= 0.5 else 0 for p in predictions])
+    recall = recall_score(targets, [1 if p >= 0.5 else 0 for p in predictions])
+    gmean = (precision * recall) ** 0.5
+
+    return auc, gmean
 
 if __name__ == "__main__":
     main()
