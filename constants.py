@@ -25,3 +25,4 @@ selected_columns = [
     "earliest_cr_line",
     "total_rev_hi_lim",
 ]
+categorical_features = ['term','purpose', 'home_ownership', 'verification_status']

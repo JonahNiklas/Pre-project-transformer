@@ -12,7 +12,7 @@ from tqdm import tqdm
 from constants import num_epochs, target_column, train_dev_test_split
 from logistics_regression_model import LogisticRegressionModel
 from get_data import get_data
-from pre_process_data import pre_process_data
+from preprocess_data import preprocess_data
 
 pd.options.mode.copy_on_write = True
 
@@ -22,18 +22,18 @@ logger = logging.getLogger(__name__)
 
 def main():
     filtered_data = get_data("data/accepted_2007_to_2018q4.csv")
-    processed_data = pre_process_data(filtered_data)
-    processed_data = processed_data.drop(columns=["desc", "issue_d"])
+    filtered_data = filtered_data.drop(columns=["desc"])
+    processed_data = preprocess_data(filtered_data)
 
-    input_dim = processed_data.shape[1]
+    input_dim = processed_data.shape[1] - 1  # -1 because we drop the target column
     models = [
         LogisticRegressionModel(input_dim),
         # TransformerEncoderModel(),
     ]
 
-    train_data, dev_data, test_data = split_data(filtered_data)
+    train_data, dev_data, test_data = split_data(processed_data)
     train_data_resampled = oversample_minority_class(train_data)
-    
+
     for model in models:
         logger.info(f"Training model: {model.__class__.__name__}")
         train(model, train_data_resampled)
@@ -66,13 +66,11 @@ def train(model: nn.Module, data: pd.DataFrame):
                 train_loss += loss.item()
             except Exception as e:
                 logger.error(f"Error in batch {i}: {str(e)}")
-                logger.error(
-                    f"Data shape: {data.shape}, Target shape: {target.shape}")
+                logger.error(f"Data shape: {data.shape}, Target shape: {target.shape}")
                 raise
 
         avg_loss = train_loss / len(train_loader)
-        logger.info(
-            f"Epoch {epoch+1}/{num_epochs}, Average Loss: {avg_loss:.4f}")
+        logger.info(f"Epoch {epoch+1}/{num_epochs}, Average Loss: {avg_loss:.4f}")
 
 
 def split_data(
@@ -86,8 +84,13 @@ def split_data(
 
 
 def evaluate(model: nn.Module, test_data: pd.DataFrame):
+    test_dataset = torch.utils.data.TensorDataset(
+        torch.tensor(test_data.drop(columns=[target_column]).values, dtype=torch.float32),
+        torch.tensor(test_data[target_column].values, dtype=torch.float32),
+    )
     test_loader = torch.utils.data.DataLoader(
-        test_data, batch_size=64, shuffle=False)
+        test_dataset, batch_size=64, shuffle=False
+    )
     model.eval()
     predictions = []
     targets = []
@@ -99,8 +102,7 @@ def evaluate(model: nn.Module, test_data: pd.DataFrame):
             targets.extend(target.tolist())
 
     auc = roc_auc_score(targets, predictions)
-    sensitivity = recall_score(
-        targets, [1 if p >= 0.5 else 0 for p in predictions])
+    sensitivity = recall_score(targets, [1 if p >= 0.5 else 0 for p in predictions])
     specificity = recall_score(
         targets, [1 if p >= 0.5 else 0 for p in predictions], pos_label=0
     )
@@ -122,6 +124,7 @@ def oversample_minority_class(train_data: pd.DataFrame):
         negative_samples, replace=True, n_samples=num_positive_samples, random_state=42
     )
     return pd.concat([positive_samples, negative_samples_upsampled])
+
 
 if __name__ == "__main__":
     main()

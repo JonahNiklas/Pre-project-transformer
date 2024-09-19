@@ -25,8 +25,6 @@ def get_data(raw_data_path: str, save_path="data/preprocessed_data.parquet"):
     filtered_data = _drop_unnecessary_columns_and_na(filtered_data)
     filtered_data = _drop_current_and_late_loans(filtered_data)
 
-    filtered_data = filtered_data.astype(np.float32)
-
     logger.info(f"Saving preprocessed data to {save_path}")
     filtered_data.to_parquet(save_path)
 
@@ -55,7 +53,7 @@ def _filter_short_descriptions(data):
 
 
 def _drop_unnecessary_columns_and_na(data):
-    return data.drop(columns=["earliest_cr_line", "total_rev_hi_lim"]).dropna()
+    return data.drop(columns=["earliest_cr_line", "total_rev_hi_lim", "issue_d"]).dropna()
 
 def _drop_current_and_late_loans(data):
     return data[data['loan_status'].isin(['Fully Paid', 'Charged Off'])]
