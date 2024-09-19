@@ -37,9 +37,12 @@ def main():
     for model in models:
         logger.info(f"Training model: {model.__class__.__name__}")
         train(model, train_data_resampled)
+        # Evaluate on train_data
+        auc_train_set, gmean_train_set = evaluate(model, train_data)
+        logger.info(f"Train set - AUC: {auc_train_set:.4f}, G-mean: {gmean_train_set:.4f}")
         # Evaluate on dev_data
-        auc, gmean = evaluate(model, dev_data)
-        logger.info(f"Dev set - AUC: {auc:.4f}, G-mean: {gmean:.4f}")
+        auc_dev_set, gmean_dev_set = evaluate(model, dev_data)
+        logger.info(f"Dev set - AUC: {auc_dev_set:.4f}, G-mean: {gmean_dev_set:.4f}")
 
 
 def train(model: nn.Module, data: pd.DataFrame):
@@ -85,7 +88,9 @@ def split_data(
 
 def evaluate(model: nn.Module, test_data: pd.DataFrame):
     test_dataset = torch.utils.data.TensorDataset(
-        torch.tensor(test_data.drop(columns=[target_column]).values, dtype=torch.float32),
+        torch.tensor(
+            test_data.drop(columns=[target_column]).values, dtype=torch.float32
+        ),
         torch.tensor(test_data[target_column].values, dtype=torch.float32),
     )
     test_loader = torch.utils.data.DataLoader(
@@ -110,8 +115,12 @@ def evaluate(model: nn.Module, test_data: pd.DataFrame):
 
 
 def oversample_minority_class(train_data: pd.DataFrame):
-    num_positive_samples = train_data[train_data[target_column] == 1].shape[0]
-    num_negative_samples = train_data[train_data[target_column] == 0].shape[0]
+    def get_num_samples_per_class(data: pd.DataFrame):
+        num_positive_samples = data[data[target_column] == 1].shape[0]
+        num_negative_samples = data[data[target_column] == 0].shape[0]
+        return num_positive_samples, num_negative_samples
+
+    num_positive_samples, num_negative_samples = get_num_samples_per_class(train_data)
     assert num_positive_samples > num_negative_samples
     logging.debug(
         f"Resampling minority class (negative) from {num_negative_samples} to {num_positive_samples}"
@@ -121,7 +130,13 @@ def oversample_minority_class(train_data: pd.DataFrame):
     negative_samples_upsampled = resample(
         negative_samples, replace=True, n_samples=num_positive_samples, random_state=42
     )
-    return pd.concat([positive_samples, negative_samples_upsampled])
+    assert len(negative_samples_upsampled) == num_positive_samples
+    oversampled_data = pd.concat([positive_samples, negative_samples_upsampled])
+    new_num_positive_samples, new_num_negative_samples = get_num_samples_per_class(
+        oversampled_data
+    )
+    assert new_num_positive_samples == new_num_negative_samples == num_positive_samples
+    return oversampled_data
 
 
 if __name__ == "__main__":
