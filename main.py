@@ -1,10 +1,11 @@
 import logging
-import os
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import torch
 import torch.nn as nn
+from sklearn.metrics import (fbeta_score, precision_score, recall_score,
+                             roc_auc_score)
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
@@ -72,6 +73,24 @@ def split_data(
     train_data, dev_data = train_test_split(train_data, test_size=split[1] / (split[0] + split[1]))
     return train_data, dev_data, test_data
 
+def evaluate(model: nn.Module, test_data: pd.DataFrame):
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=64, shuffle=False)
+    model.eval()
+    predictions = []
+    targets = []
+
+    with torch.no_grad():
+        for data, target in test_loader:
+            output = model(data)
+            predictions.extend(output.tolist())
+            targets.extend(target.tolist())
+
+    auc = roc_auc_score(targets, predictions)
+    precision = precision_score(targets, [1 if p >= 0.5 else 0 for p in predictions])
+    recall = recall_score(targets, [1 if p >= 0.5 else 0 for p in predictions])
+    gmean = (precision * recall) ** 0.5
+
+    return auc, gmean
 
 if __name__ == "__main__":
     main()
