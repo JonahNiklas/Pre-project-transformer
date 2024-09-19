@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import os
 from constants import selected_columns
@@ -22,6 +23,8 @@ def preprocess_data(raw_data_path: str, save_path = "data/preprocessed_data.parq
     filtered_data = _calculate_revolving_income_ratio(filtered_data)
     filtered_data = _filter_short_descriptions(filtered_data)
     filtered_data = _drop_unnecessary_columns_and_na(filtered_data)
+
+    filtered_data = filtered_data.astype(np.float32)
 
     logger.info(f"Saving preprocessed data to {save_path}")
     filtered_data.to_parquet(save_path)
