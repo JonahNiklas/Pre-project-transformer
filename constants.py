@@ -1,5 +1,6 @@
 num_epochs = 10
-
+train_dev_test_split = (0.8, 0.1, 0.1)
+target_column = "loan_status"
 selected_columns = [
     "issue_d",
     "loan_status",
