@@ -1,3 +1,5 @@
+num_epochs = 10
+
 selected_columns = [
     "issue_d",
     "loan_status",
