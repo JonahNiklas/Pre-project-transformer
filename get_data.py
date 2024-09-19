@@ -9,7 +9,7 @@ from utils.bool_string import bool_string
 logger = logging.getLogger(__name__)
 
 
-def preprocess_data(raw_data_path: str, save_path = "data/preprocessed_data.parquet"):
+def get_data(raw_data_path: str, save_path="data/preprocessed_data.parquet"):
     USE_CACHE = bool_string(os.getenv("USE_CACHE", "true"))
     if USE_CACHE and os.path.exists(save_path):
         logger.info(f"Loading preprocessed data from {save_path}")
@@ -23,6 +23,7 @@ def preprocess_data(raw_data_path: str, save_path = "data/preprocessed_data.parq
     filtered_data = _calculate_revolving_income_ratio(filtered_data)
     filtered_data = _filter_short_descriptions(filtered_data)
     filtered_data = _drop_unnecessary_columns_and_na(filtered_data)
+    filtered_data = _drop_current_and_late_loans(filtered_data)
 
     filtered_data = filtered_data.astype(np.float32)
 
@@ -34,9 +35,11 @@ def preprocess_data(raw_data_path: str, save_path = "data/preprocessed_data.parq
 
 def _process_dates_and_credit_age(data):
     data["issue_d"] = pd.to_datetime(data["issue_d"], format="%b-%Y")
-    data["earliest_cr_line"] = pd.to_datetime(data["earliest_cr_line"], format="%b-%Y")
+    data["earliest_cr_line"] = pd.to_datetime(
+        data["earliest_cr_line"], format="%b-%Y")
     data = data.query("issue_d <= '2014-12-31'")
-    data["credit_age"] = (data["issue_d"] - data["earliest_cr_line"]).dt.days / 30
+    data["credit_age"] = (
+        data["issue_d"] - data["earliest_cr_line"]).dt.days / 30
     return data
 
 
@@ -54,3 +57,5 @@ def _filter_short_descriptions(data):
 def _drop_unnecessary_columns_and_na(data):
     return data.drop(columns=["earliest_cr_line", "total_rev_hi_lim"]).dropna()
 
+def _drop_current_and_late_loans(data):
+    return data[data['loan_status'].isin(['Fully Paid', 'Charged Off'])]
