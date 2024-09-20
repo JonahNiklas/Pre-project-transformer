@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from base_model import BaseModel
+from models.base_model import BaseModel
 
 class DeepFeedForwardModel(BaseModel):
     def __init__(self, input_dim):

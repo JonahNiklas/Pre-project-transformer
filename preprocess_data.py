@@ -10,9 +10,6 @@ def preprocess_data(data):
     data = _log_transform_like_paper(data)
     data = _one_hot_encode_features(data, features=categorical_features)
     data = _encode_target(data)
-
-    data = data.astype(np.float32)
-
     return data
 
 
