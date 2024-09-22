@@ -50,12 +50,12 @@ def main():
         logger.info(f"Training model: {model.__class__.__name__}")
         train(model, train_dataset_with_embeddings)
         # Evaluate on train_data
-        auc_train_set, gmean_train_set = evaluate(model, train_data)
+        auc_train_set, gmean_train_set = evaluate(model, train_dataset_with_embeddings)
         logger.info(
             f"Train set - AUC: {auc_train_set:.4f}, G-mean: {gmean_train_set:.4f}"
         )
         # Evaluate on dev_data
-        auc_dev_set, gmean_dev_set = evaluate(model, dev_data)
+        auc_dev_set, gmean_dev_set = evaluate(model, dev_dataset_with_embeddings)
         logger.info(f"Dev set - AUC: {auc_dev_set:.4f}, G-mean: {gmean_dev_set:.4f}")
 
 
@@ -83,13 +83,7 @@ def train(model: BaseModel, dataset: Dataset):
         logger.info(f"Epoch {epoch+1}/{num_epochs}, Average Loss: {avg_loss:.4f}")
 
 
-def evaluate(model: nn.Module, test_data: pd.DataFrame):
-    test_dataset = torch.utils.data.TensorDataset(
-        torch.tensor(
-            test_data.drop(columns=[target_column]).values, dtype=torch.float32
-        ),
-        torch.tensor(test_data[target_column].values, dtype=torch.float32),
-    )
+def evaluate(model: nn.Module, test_dataset: Dataset):
     test_loader = torch.utils.data.DataLoader(
         test_dataset, batch_size=64, shuffle=False
     )
@@ -98,8 +92,11 @@ def evaluate(model: nn.Module, test_data: pd.DataFrame):
     targets = []
 
     with torch.no_grad():
-        for data, target in test_loader:
-            output = model.predict(data)
+        for data, embedding, target in test_loader:
+            if model.is_text_model:
+                output = model.predict(data, embedding)
+            else:
+                output = model.predict(data)
             predictions.extend(output.tolist())
             targets.extend(target.tolist())
 

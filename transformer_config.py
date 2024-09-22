@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 class TransformerConfig(BaseModel):
-    hidden_dim: int
+    d_ff: int
     max_seq_length: int
     dropout: float
     num_heads: int

@@ -32,7 +32,7 @@ class DeepFeedForward(nn.Module):
     def __init__(self, hard_features_dim: int):
         super(DeepFeedForward, self).__init__()
         self.hard_features_dim = hard_features_dim
-        self.input_dim = hard_features_dim + transformer_config.hidden_dim
+        self.input_dim = hard_features_dim + embedding_dimension
 
         self.fc1 = nn.Linear(self.input_dim, 64)
         self.fc2 = nn.Linear(64, 32)
@@ -42,7 +42,7 @@ class DeepFeedForward(nn.Module):
         batch_size = x.shape[0]
         assert x.shape == (
             batch_size,
-            (self.hard_features_dim + transformer_config.hidden_dim),
+            (self.hard_features_dim + embedding_dimension),
         )
         x = nn.functional.relu(self.fc1(x))
         x = nn.functional.relu(self.fc2(x))

@@ -5,6 +5,9 @@ class BaseModel(nn.Module):
         super(BaseModel, self).__init__()
         self.is_text_model = False
 
-    def predict(self, x, threshold=0.5):
-        proba = self(x)
+    def predict(self, hard_feautures, embeddings=None, threshold=0.5):
+        if self.is_text_model:
+            proba = self(hard_feautures, embeddings)
+        else:
+            proba = self(hard_feautures)
         return (proba >= threshold).float().squeeze(1)

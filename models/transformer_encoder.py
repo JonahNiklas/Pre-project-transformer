@@ -6,7 +6,6 @@ from constants import transformer_config as config, embedding_dimension
 class TransformerEncoder(nn.Module):
     def __init__(self):
         super(TransformerEncoder, self).__init__()
-        self.hidden_dim = config.hidden_dim
         self.max_seq_length = config.max_seq_length
 
         # Positional encoding
@@ -17,7 +16,7 @@ class TransformerEncoder(nn.Module):
         self.encoder_layer = nn.TransformerEncoderLayer(
             d_model=embedding_dimension,
             nhead=config.num_heads,
-            dim_feedforward=config.hidden_dim,
+            dim_feedforward=config.d_ff,
             dropout=config.dropout,
             activation=config.activation,
         )
@@ -35,6 +34,7 @@ class TransformerEncoder(nn.Module):
         x = self.pos_encoder(x)
         x = self.encoder(x)
         x = x.transpose(0, 1)  # (batch_size, seq_len, hidden_dim)
+        x = x[:, 0, :]  # (batch_size, hidden_dim)
         return x
 
 
