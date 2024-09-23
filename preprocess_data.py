@@ -2,7 +2,9 @@ import pandas as pd
 import numpy as np
 from sklearn.discriminant_analysis import StandardScaler
 from constants import categorical_features
+import logging
 
+logger = logging.getLogger(__name__)
 
 def preprocess_data(data):
     data = _extract_emp_length(data)
@@ -10,6 +12,7 @@ def preprocess_data(data):
     data = _log_transform_like_paper(data)
     data = _one_hot_encode_features(data, features=categorical_features)
     data = _encode_target(data)
+
     return data
 
 
