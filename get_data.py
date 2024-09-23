@@ -28,11 +28,11 @@ def get_data(
     filtered_data = _calculate_revolving_income_ratio(filtered_data)
     filtered_data = _clean_description(filtered_data)
     filtered_data = _add_description_length(filtered_data)
-    filtered_data = _remove_unnecessary_columns_and_na(filtered_data)
 
     filtered_data = _filter_within_date_range(filtered_data)
     filtered_data = _filter_short_descriptions(filtered_data)
     filtered_data = _filter_current_and_late_loans(filtered_data)
+    filtered_data = _remove_unnecessary_columns_and_na(filtered_data)
     filtered_data = _dropna(filtered_data)
 
     _log_description_length_metrics(filtered_data)
@@ -63,8 +63,8 @@ def _clean_description(data):
         Borrower added on 03/18/14 > Looking to consolidate debt as well as purchase new vehicle with loan.<br>
     This function removes the 'Borrower added on [...] >' part and the '<br>' tag from the description.
     """
-    data["desc"] = data["desc"].str.replace("<br>", "")
-    data["desc"] = data["desc"].str.replace("Borrower added on [^ ]+ > ", "")
+    data["desc"] = data["desc"].str.replace("<br>", "", regex=False)
+    data["desc"] = data["desc"].str.replace("Borrower added on [^ ]+ > ", "", regex=True)
     data["desc"] = data["desc"].str.strip()
 
     return data
@@ -82,16 +82,19 @@ def _remove_unnecessary_columns_and_na(data):
     )
 
 
+def _log_filtered_rows(initial_rows, final_rows, reason):
+    rows_removed = initial_rows - final_rows
+    percent_removed = (rows_removed / initial_rows) * 100
+    logger.debug(
+        f"Dropped rows {reason}: {rows_removed}/{initial_rows} ({percent_removed:.2f}%)"
+    )
+
+
 def _filter_within_date_range(data):
     initial_rows = len(data)
     data = data.query(f"issue_d.dt.year >= {year_range[0]} and issue_d.dt.year <= {year_range[1]}")
     final_rows = len(data)
-    rows_removed = initial_rows - final_rows
-    percent_removed = (rows_removed / initial_rows) * 100
-
-    logger.debug(
-        f"Dropped rows with issue_d outside of {year_range[0]}-{year_range[1]}: {rows_removed}/{initial_rows} ({percent_removed:.2f}%)"
-    )
+    _log_filtered_rows(initial_rows, final_rows, f"with issue_d outside of {year_range[0]}-{year_range[1]}")
     return data
 
 
@@ -99,13 +102,7 @@ def _filter_short_descriptions(data):
     initial_rows = len(data)
     filtered_data = data.query("desc_length >= 20")
     final_rows = len(filtered_data)
-    rows_removed = initial_rows - final_rows
-    percent_removed = (rows_removed / initial_rows) * 100
-
-    logger.debug(
-        f"Dropped rows with short descriptions: {rows_removed}/{initial_rows} ({percent_removed:.2f}%)"
-    )
-
+    _log_filtered_rows(initial_rows, final_rows, "with short descriptions")
     return filtered_data
 
 
@@ -113,12 +110,7 @@ def _filter_current_and_late_loans(data):
     initial_rows = len(data)
     filtered_data = data[data["loan_status"].isin(["Fully Paid", "Charged Off"])]
     final_rows = len(filtered_data)
-    rows_removed = initial_rows - final_rows
-    percent_removed = (rows_removed / initial_rows) * 100
-
-    logger.debug(
-        f"Dropped rows with current or late loans: {rows_removed}/{initial_rows} ({percent_removed:.2f}%)"
-    )
+    _log_filtered_rows(initial_rows, final_rows, "with current or late loans")
     return filtered_data
 
 
@@ -126,12 +118,7 @@ def _dropna(data):
     initial_rows = len(data)
     filtered_data = data.dropna()
     final_rows = len(filtered_data)
-    rows_removed = initial_rows - final_rows
-    percent_removed = (rows_removed / initial_rows) * 100
-
-    logger.debug(
-        f"Dropped rows with NA: {rows_removed}/{initial_rows} ({percent_removed:.2f}%)"
-    )
+    _log_filtered_rows(initial_rows, final_rows, "with NA")
     return filtered_data
 
 
