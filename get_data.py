@@ -31,6 +31,7 @@ def get_data(
 
     filtered_data = _filter_within_date_range(filtered_data)
     filtered_data = _filter_short_descriptions(filtered_data)
+    filtered_data = _filter_home_ownership(filtered_data)
     filtered_data = _filter_current_and_late_loans(filtered_data)
     filtered_data = _remove_unnecessary_columns_and_na(filtered_data)
     filtered_data = _dropna(filtered_data)
@@ -105,6 +106,12 @@ def _filter_short_descriptions(data):
     _log_filtered_rows(initial_rows, final_rows, "with short descriptions")
     return filtered_data
 
+def _filter_home_ownership(data):
+    initial_rows = len(data)
+    filtered_data = data[data["home_ownership"].isin(["RENT", "OWN", "MORTGAGE"])]
+    final_rows = len(filtered_data)
+    _log_filtered_rows(initial_rows, final_rows, "with home_ownership not in ['rent', 'own', 'mortgage']")
+    return filtered_data
 
 def _filter_current_and_late_loans(data):
     initial_rows = len(data)
