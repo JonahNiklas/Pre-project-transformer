@@ -1,7 +1,7 @@
 from transformer_config import TransformerConfig
 
 year_range = (2007, 2014)
-num_epochs = 1
+num_epochs = 7
 train_dev_test_split = (0.8, 0.1, 0.1)
 target_column = "loan_status"
 embedding_dimension = 50
@@ -16,6 +16,7 @@ transformer_config = TransformerConfig.model_validate(
         "num_layers": 1,
     }
 )
+deep_feed_forward_hidden_units = (10, 10)
 selected_columns = [
     "issue_d",
     "loan_status",

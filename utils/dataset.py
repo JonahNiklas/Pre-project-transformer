@@ -51,7 +51,9 @@ def oversample_minority_class(train_data: pd.DataFrame):
     positive_samples = resample(
         positive_cases, replace=False, n_samples=num_positive_samples, random_state=42
     )
-    return pd.concat([positive_samples, negative_samples])
+    output = pd.concat([positive_samples, negative_samples])
+    assert len(output) == num_positive_samples + num_negative_samples
+    return output
 
 
 def normalize(
