@@ -23,6 +23,8 @@ pd.options.mode.copy_on_write = True
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+logger.debug(f"Using device: {device}")
 
 def main():
     filtered_data = get_data("data/accepted_2007_to_2018q4.csv")
@@ -33,9 +35,9 @@ def main():
     )  # -1 because we drop the target column and description column
 
     models: list[BaseModel] = [
-        TransformerEncoderModel(num_hard_features),
-        LogisticRegressionModel(num_hard_features),
-        DeepFeedForwardModel(num_hard_features),
+        TransformerEncoderModel(num_hard_features).to(device),
+        LogisticRegressionModel(num_hard_features).to(device),
+        DeepFeedForwardModel(num_hard_features).to(device),
     ]
 
     train_data, dev_data, test_data = split_data(processed_data)
@@ -43,9 +45,9 @@ def main():
     # train_data, dev_data, test_data = normalize(train_data, dev_data, test_data)
 
     logger.info(f"Creating embeddings for train, dev and test datasets")
-    train_dataset_with_embeddings = create_dataset_with_embeddings(train_data)
-    dev_dataset_with_embeddings = create_dataset_with_embeddings(dev_data)
-    test_dataset_with_embeddings = create_dataset_with_embeddings(test_data)
+    train_dataset_with_embeddings = create_dataset_with_embeddings(train_data).to(device)
+    dev_dataset_with_embeddings = create_dataset_with_embeddings(dev_data).to(device)
+    test_dataset_with_embeddings = create_dataset_with_embeddings(test_data).to(device)
 
     for model in models:
         logger.info(f"\n\nTraining model: {model.__class__.__name__}")
@@ -53,7 +55,7 @@ def main():
 
     for model in models:
         auc_test_set, gmean_test_set = evaluate(model, test_dataset_with_embeddings)
-        logger.info(f"Test set - AUC: {auc_test_set:.4f}, G-mean: {gmean_test_set:.4f}")
+        logger.info(f"{model.__class__.__name__} - Test set - AUC: {auc_test_set:.4f}, G-mean: {gmean_test_set:.4f}")
 
 
 def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
@@ -61,7 +63,7 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
         training_dataset, batch_size=64, shuffle=True
     )
 
-    optimizer = torch.optim.Adam(model.parameters())
+    optimizer = torch.optim.Adam(model.parameters(), weight_decay=0.001)
     criterion = nn.BCELoss()
 
     best_dev_auc = 0

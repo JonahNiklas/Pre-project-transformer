@@ -4,14 +4,14 @@ year_range = (2007, 2014)
 num_epochs = 7
 train_dev_test_split = (0.8, 0.1, 0.1)
 target_column = "loan_status"
-embedding_dimension = 50
+embedding_dimension = 200
 over_sampling_ratio = 0.5
 transformer_config = TransformerConfig.model_validate(
     {
         "d_ff": 50,
         "max_seq_length": 75,
         "dropout": 0.1,
-        "num_heads": 5, # TODO: should be 8, that is what the paper uses
+        "num_heads": 8, # TODO: should be 8, that is what the paper uses, embedding dimension must be divisible by num_heads
         "activation": "relu",
         "num_layers": 1,
     }
