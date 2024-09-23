@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.utils import resample
-from constants import num_epochs, target_column, train_dev_test_split
+from constants import target_column, train_dev_test_split, over_sampling_ratio
 
 from constants import target_column
 from dataset import Dataset
@@ -28,28 +28,30 @@ def split_data(
     return train_data, dev_data, test_data
 
 def oversample_minority_class(train_data: pd.DataFrame):
-    def get_num_samples_per_class(data: pd.DataFrame):
-        num_positive_samples = data[data[target_column] == 1].shape[0]
-        num_negative_samples = data[data[target_column] == 0].shape[0]
-        return num_positive_samples, num_negative_samples
+    def get_num_cases_per_class(data: pd.DataFrame):
+        num_positive_cases = data[data[target_column] == 1].shape[0]
+        num_negative_cases = data[data[target_column] == 0].shape[0]
+        return num_positive_cases, num_negative_cases
 
-    num_positive_samples, num_negative_samples = get_num_samples_per_class(train_data)
-    assert num_positive_samples > num_negative_samples
+    positive_cases = train_data[train_data[target_column] == 1]
+    negative_cases = train_data[train_data[target_column] == 0]
+    
+    num_positive_cases, num_negative_cases = get_num_cases_per_class(train_data)
+    assert num_positive_cases > num_negative_cases
+    
+    num_negative_samples = num_negative_cases + int((num_positive_cases-num_negative_cases) * (over_sampling_ratio))
+    num_positive_samples = num_positive_cases - int((num_positive_cases-num_negative_cases) * (1-over_sampling_ratio))
     logger.debug(
-        f"Resampling minority class (negative) from {num_negative_samples} to {num_positive_samples}"
+        f"Resampling minority class (negative) from {num_negative_cases} to {num_positive_samples}\n and majority class (positive) from {num_positive_cases} to {num_positive_samples}"
     )
-    positive_samples = train_data[train_data[target_column] == 1]
-    negative_samples = train_data[train_data[target_column] == 0]
-    negative_samples_upsampled = resample(
-        negative_samples, replace=True, n_samples=num_positive_samples, random_state=42
+    
+    negative_samples = resample(
+        negative_cases, replace=True, n_samples=num_negative_samples, random_state=42
     )
-    assert len(negative_samples_upsampled) == num_positive_samples
-    oversampled_data = pd.concat([positive_samples, negative_samples_upsampled])
-    new_num_positive_samples, new_num_negative_samples = get_num_samples_per_class(
-        oversampled_data
+    positive_samples = resample(
+        positive_cases, replace=False, n_samples=num_positive_samples, random_state=42
     )
-    assert new_num_positive_samples == new_num_negative_samples == num_positive_samples
-    return oversampled_data
+    return pd.concat([positive_samples, negative_samples])
 
 
 def normalize(
