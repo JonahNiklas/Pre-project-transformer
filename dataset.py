@@ -9,7 +9,7 @@ class Dataset(torch.utils.data.TensorDataset):
     def __init__(self, hard_features: pd.DataFrame, embeddings: np.ndarray):
         assert len(hard_features) == len(embeddings)
         self.hard_features = torch.tensor(
-            hard_features.drop(columns=[target_column]).values, dtype=torch.float32
+            hard_features.drop(columns=[target_column]).to_numpy(dtype=np.float32), dtype=torch.float32
         )
         self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
         self.targets = torch.tensor(
