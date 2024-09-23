@@ -43,3 +43,4 @@ selected_columns = [
 ]
 categorical_features = ["grade","term", "purpose", "home_ownership", "verification_status"]
 percentage_features = ["int_rate", "revol_util"]
+prediction_threshold = 0.5
