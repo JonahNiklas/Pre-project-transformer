@@ -7,7 +7,7 @@ import torch.nn as nn
 from sklearn.metrics import recall_score, roc_auc_score
 from tqdm import tqdm
 
-from constants import num_epochs, target_column
+from constants import num_epochs, prediction_threshold
 from dataset import Dataset
 from get_data import get_data
 from models.base_model import BaseModel
@@ -17,6 +17,7 @@ from models.transormer_encoder_model import TransformerEncoderModel
 from preprocess_data import preprocess_data
 from utils.dataset import (create_dataset_with_embeddings, normalize,
                            oversample_minority_class, split_data)
+
 
 pd.options.mode.copy_on_write = True
 
@@ -45,9 +46,9 @@ def main():
     # train_data, dev_data, test_data = normalize(train_data, dev_data, test_data)
 
     logger.info(f"Creating embeddings for train, dev and test datasets")
-    train_dataset_with_embeddings = create_dataset_with_embeddings(train_data).to(device)
-    dev_dataset_with_embeddings = create_dataset_with_embeddings(dev_data).to(device)
-    test_dataset_with_embeddings = create_dataset_with_embeddings(test_data).to(device)
+    train_dataset_with_embeddings = create_dataset_with_embeddings(train_data)
+    dev_dataset_with_embeddings = create_dataset_with_embeddings(dev_data)
+    test_dataset_with_embeddings = create_dataset_with_embeddings(test_data)
 
     for model in models:
         logger.info(f"\n\nTraining model: {model.__class__.__name__}")
@@ -103,19 +104,20 @@ def evaluate(model: nn.Module, test_dataset: Dataset):
         test_dataset, batch_size=64, shuffle=False
     )
     model.eval()
-    predictions = []
+    probas = []
     targets = []
 
     with torch.no_grad():
         for data, embedding, target in test_loader:
             if model.is_text_model:
-                output = model.predict(data, embedding)
+                proba = model(data, embedding)
             else:
-                output = model.predict(data)
-            predictions.extend(output.tolist())
+                proba = model(data)
+            probas.extend(proba.tolist())
             targets.extend(target.tolist())
 
-    auc = roc_auc_score(targets, predictions)
+    auc = roc_auc_score(targets, probas)
+    predictions = (torch.tensor(probas) >= prediction_threshold).float()
     sensitivity = recall_score(targets, predictions)
     specificity = recall_score(targets, predictions, pos_label=0)
     gmean = (sensitivity * specificity) ** 0.5
