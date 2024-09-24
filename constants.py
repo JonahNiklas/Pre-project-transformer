@@ -6,6 +6,8 @@ train_dev_test_split = (0.8, 0.1, 0.1)
 target_column = "loan_status"
 embedding_dimension = 200
 over_sampling_ratio = 0.5
+weight_decay = 0.01 # Best result with weight decay 0.001
+learning_rate = 0.0001
 transformer_config = TransformerConfig.model_validate(
     {
         "d_ff": 50,

@@ -7,7 +7,7 @@ import torch.nn as nn
 from sklearn.metrics import recall_score, roc_auc_score
 from tqdm import tqdm
 
-from constants import num_epochs, prediction_threshold
+from constants import num_epochs, prediction_threshold, weight_decay, learning_rate
 from dataset import Dataset
 from get_data import get_data
 from models.base_model import BaseModel
@@ -15,8 +15,12 @@ from models.deep_feed_forward_model import DeepFeedForwardModel
 from models.logistics_regression_model import LogisticRegressionModel
 from models.transormer_encoder_model import TransformerEncoderModel
 from preprocess_data import preprocess_data
-from utils.dataset import (create_dataset_with_embeddings, normalize,
-                           oversample_minority_class, split_data)
+from utils.dataset import (
+    create_dataset_with_embeddings,
+    normalize,
+    oversample_minority_class,
+    split_data,
+)
 
 
 pd.options.mode.copy_on_write = True
@@ -26,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logger.debug(f"Using device: {device}")
+
 
 def main():
     filtered_data = get_data("data/accepted_2007_to_2018q4.csv")
@@ -56,7 +61,9 @@ def main():
 
     for model in models:
         auc_test_set, gmean_test_set = evaluate(model, test_dataset_with_embeddings)
-        logger.info(f"{model.__class__.__name__} - Test set - AUC: {auc_test_set:.4f}, G-mean: {gmean_test_set:.4f}")
+        logger.info(
+            f"{model.__class__.__name__} - Test set - AUC: {auc_test_set:.4f}, G-mean: {gmean_test_set:.4f}"
+        )
 
 
 def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
@@ -64,7 +71,9 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
         training_dataset, batch_size=64, shuffle=True
     )
 
-    optimizer = torch.optim.Adam(model.parameters(), weight_decay=0.001)
+    optimizer = torch.optim.Adam(
+        model.parameters(), weight_decay=weight_decay, lr=learning_rate
+    )
     criterion = nn.BCELoss()
 
     best_dev_auc = 0
@@ -90,13 +99,17 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
             best_dev_gmean = dev_gmean
             logger.info("New best dev AUC and G-mean, saving model")
             os.makedirs("model_weights", exist_ok=True)
-            torch.save(model.state_dict(), f"model_weights/{model.__class__.__name__}.pth")
+            torch.save(
+                model.state_dict(), f"model_weights/{model.__class__.__name__}.pth"
+            )
 
         avg_loss = train_loss / len(train_loader)
         logger.info(
             f"Epoch {epoch+1}/{num_epochs}, Average Loss: {avg_loss:.4f}, Dev AUC: {best_dev_auc:.4f}, Dev G-mean: {best_dev_gmean:.4f}"
         )
-        model.load_state_dict(torch.load(f"model_weights/{model.__class__.__name__}.pth"))
+        model.load_state_dict(
+            torch.load(f"model_weights/{model.__class__.__name__}.pth")
+        )
 
 
 def evaluate(model: nn.Module, test_dataset: Dataset):
