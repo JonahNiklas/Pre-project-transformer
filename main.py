@@ -7,7 +7,7 @@ import torch.nn as nn
 from sklearn.metrics import recall_score, roc_auc_score
 from tqdm import tqdm
 
-from constants import num_epochs, prediction_threshold, weight_decay, learning_rate
+from constants import num_epochs, prediction_threshold, device, weight_decay, learning_rate, numerical_features
 from dataset import Dataset
 from get_data import get_data
 from models.base_model import BaseModel
@@ -28,7 +28,6 @@ pd.options.mode.copy_on_write = True
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logger.debug(f"Using device: {device}")
 
 
@@ -48,7 +47,7 @@ def main():
 
     train_data, dev_data, test_data = split_data(processed_data)
     train_data = oversample_minority_class(train_data)
-    # train_data, dev_data, test_data = normalize(train_data, dev_data, test_data)
+    train_data, dev_data, test_data = normalize(train_data, dev_data, test_data, numerical_features)
 
     logger.info(f"Creating embeddings for train, dev and test datasets")
     train_dataset_with_embeddings = create_dataset_with_embeddings(train_data)

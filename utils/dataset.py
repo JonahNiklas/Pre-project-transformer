@@ -57,7 +57,7 @@ def oversample_minority_class(train_data: pd.DataFrame):
 
 
 def normalize(
-    train_data: pd.DataFrame, dev_data: pd.DataFrame, test_data: pd.DataFrame
+    train_data: pd.DataFrame, dev_data: pd.DataFrame, test_data: pd.DataFrame, numerical_features: list[str]
 ):
     scaler = StandardScaler()
 
@@ -71,22 +71,14 @@ def normalize(
     dev_features = dev_data.drop(columns=[target_column])
     test_features = test_data.drop(columns=[target_column])
 
-    # Scale features
-    train_features_scaled = pd.DataFrame(
-        scaler.fit_transform(train_features),
-        columns=train_features.columns,
-        index=train_features.index,
-    )
-    dev_features_scaled = pd.DataFrame(
-        scaler.transform(dev_features),
-        columns=dev_features.columns,
-        index=dev_features.index,
-    )
-    test_features_scaled = pd.DataFrame(
-        scaler.transform(test_features),
-        columns=test_features.columns,
-        index=test_features.index,
-    )
+    # Scale numerical features
+    train_features_scaled = train_features.copy()
+    dev_features_scaled = dev_features.copy()
+    test_features_scaled = test_features.copy()
+    
+    train_features_scaled[numerical_features] = scaler.fit_transform(train_features[numerical_features])
+    dev_features_scaled[numerical_features] = scaler.transform(dev_features[numerical_features])
+    test_features_scaled[numerical_features] = scaler.transform(test_features[numerical_features])
 
     # Combine scaled features with unscaled target
     train_data_scaled = pd.concat([train_features_scaled, train_target], axis=1)
