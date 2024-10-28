@@ -7,15 +7,16 @@ import torch.nn as nn
 from sklearn.metrics import recall_score, roc_auc_score
 from tqdm import tqdm
 
-from constants import num_epochs, prediction_threshold, device, weight_decay, learning_rate, numerical_features
-from dataset import Dataset
-from get_data import get_data
-from models.base_model import BaseModel
-from models.deep_feed_forward_model import DeepFeedForwardModel
-from models.logistics_regression_model import LogisticRegressionModel
-from models.transormer_encoder_model import TransformerEncoderModel
-from preprocess_data import preprocess_data
-from utils.dataset import (
+from p2p_lending.constants import num_epochs, prediction_threshold, device, weight_decay, learning_rate, numerical_features
+from p2p_lending.dataset import Dataset
+from p2p_lending.utils.loss_attenuation import loss_attenuation
+from p2p_lending.get_data import get_data
+from p2p_lending.models.base_model import BaseModel
+from p2p_lending.models.deep_feed_forward_model import DeepFeedForwardModel
+from p2p_lending.models.logistics_regression_model import LogisticRegressionModel
+from p2p_lending.models.transormer_encoder_model import TransformerEncoderModel
+from p2p_lending.preprocess_data import preprocess_data
+from p2p_lending.utils.dataset import (
     create_dataset_with_embeddings,
     normalize,
     oversample_minority_class,
@@ -32,8 +33,8 @@ logger.debug(f"Using device: {device}")
 
 
 def main():
-    filtered_data = get_data("data/accepted_2007_to_2018q4.csv")
-    processed_data = preprocess_data(filtered_data)
+    filtered_data = get_data("p2p_lending/data/accepted_2007_to_2018q4.csv")
+    processed_data = preprocess_data(filtered_data,percentage_cases=1)
 
     num_hard_features = (
         processed_data.shape[1] - 2
@@ -41,8 +42,9 @@ def main():
 
     models: list[BaseModel] = [
         TransformerEncoderModel(num_hard_features).to(device),
-        LogisticRegressionModel(num_hard_features).to(device),
-        DeepFeedForwardModel(num_hard_features).to(device),
+        # LogisticRegressionModel(num_hard_features).to(device),
+        DeepFeedForwardModel(num_hard_features, 2).to(device),
+        # DeepFeedForwardModel(num_hard_features, 1).to(device),
     ]
 
     train_data, dev_data, test_data = split_data(processed_data)
@@ -59,9 +61,9 @@ def main():
         train(model, train_dataset_with_embeddings, dev_dataset_with_embeddings)
 
     for model in models:
-        auc_test_set, gmean_test_set = evaluate(model, test_dataset_with_embeddings)
+        auc_test_set, gmean_test_set, correlation = evaluate(model, test_dataset_with_embeddings, correlation=True)
         logger.info(
-            f"{model.__class__.__name__} - Test set - AUC: {auc_test_set:.4f}, G-mean: {gmean_test_set:.4f}"
+            f"{model.__class__.__name__} - Test set - AUC: {auc_test_set:.4f}, G-mean: {gmean_test_set:.4f}"+(f", Correlation: {correlation:.4f}" if correlation is not None else "")
         )
 
 
@@ -74,7 +76,8 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
         model.parameters(), weight_decay=weight_decay, lr=learning_rate
     )
     criterion = nn.BCELoss()
-
+    if model.output_dim == 2:
+        criterion = loss_attenuation
     best_dev_auc = 0
     best_dev_gmean = 0
 
@@ -92,7 +95,7 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
             optimizer.step()
             train_loss += loss.item()
 
-        dev_auc, dev_gmean = evaluate(model, dev_dataset)
+        dev_auc, dev_gmean, _ = evaluate(model, dev_dataset)
         if dev_auc > best_dev_auc:
             best_dev_auc = dev_auc
             best_dev_gmean = dev_gmean
@@ -111,7 +114,7 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
         )
 
 
-def evaluate(model: nn.Module, test_dataset: Dataset):
+def evaluate(model: BaseModel, test_dataset: Dataset, correlation: bool = False):
     test_loader = torch.utils.data.DataLoader(
         test_dataset, batch_size=64, shuffle=False
     )
@@ -128,14 +131,26 @@ def evaluate(model: nn.Module, test_dataset: Dataset):
             probas.extend(proba.tolist())
             targets.extend(target.tolist())
 
+    probas = torch.tensor(probas)
+    if model.output_dim == 2:
+        probas, log_variance = probas[:, 0], probas[:, 1]
+
     auc = roc_auc_score(targets, probas)
-    predictions = (torch.tensor(probas) >= prediction_threshold).float()
+    predictions = (probas >= prediction_threshold).float()
     sensitivity = recall_score(targets, predictions)
     specificity = recall_score(targets, predictions, pos_label=0)
     gmean = (sensitivity * specificity) ** 0.5
 
-    return auc, gmean
-
+    if model.output_dim != 2 or not correlation:
+        return auc, gmean, None
+    
+    log_variances = log_variance.tolist()
+    logger.info(f"Max log_variance: {max(log_variances):.4f}")
+    logger.info(f"Min log_variance: {min(log_variances):.4f}")
+    logger.info(f"Mean log_variance: {sum(log_variances) / len(log_variances):.4f}")
+    error = torch.abs(probas - torch.tensor(targets))
+    correlation = torch.corrcoef(torch.stack((log_variance, error)))[0, 1]
+    return auc, gmean, correlation
 
 if __name__ == "__main__":
     main()

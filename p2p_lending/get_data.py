@@ -1,19 +1,19 @@
 import numpy as np
 import pandas as pd
 import os
-from constants import selected_columns, year_range
+from p2p_lending.constants import selected_columns, year_range
 
 import logging
 
-from embedding import tokenize_text
-from utils.bool_string import bool_string
+from p2p_lending.embedding import tokenize_text
+from p2p_lending.utils.bool_string import bool_string
 
 logger = logging.getLogger(__name__)
 
 
 def get_data(
     raw_data_path: str,
-    save_path="data/preprocessed_data.parquet",
+    save_path="p2p_lending/data/preprocessed_data.parquet",
     use_cache=bool_string(os.getenv("USE_CACHE", "true")),
 ):
     if use_cache and os.path.exists(save_path):

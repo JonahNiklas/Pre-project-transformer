@@ -1,4 +1,4 @@
-from transformer_config import TransformerConfig
+from p2p_lending.transformer_config import TransformerConfig
 import torch
 
 target_column = "loan_status"

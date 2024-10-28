@@ -4,11 +4,10 @@ import pandas as pd
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.utils import resample
-from constants import target_column, train_dev_test_split, over_sampling_ratio
+from p2p_lending.constants import target_column, train_dev_test_split, over_sampling_ratio
 
-from constants import target_column
-from dataset import Dataset
-from embedding import embed_descriptions
+from p2p_lending.dataset import Dataset
+from p2p_lending.embedding import embed_descriptions
 
 logger = logging.getLogger(__name__)
 

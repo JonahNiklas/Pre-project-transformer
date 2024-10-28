@@ -1,19 +1,19 @@
 import torch
-from models.base_model import BaseModel
-from models.deep_feed_forward_model import DeepFeedForwardModel
-from models.transformer_encoder import TransformerEncoder
-from constants import transformer_config, embedding_dimension
-from torch import nn
+from p2p_lending.models.base_model import BaseModel
+from p2p_lending.models.deep_feed_forward_model import DeepFeedForwardModel
+from p2p_lending.models.transformer_encoder import TransformerEncoder
+from p2p_lending.constants import transformer_config, embedding_dimension
 
 
 class TransformerEncoderModel(BaseModel):
-    def __init__(self, hard_features_dim: int):
+    def __init__(self, hard_features_dim: int, output_dim: int = 2):
         super(TransformerEncoderModel, self).__init__()
         self.is_text_model = True
         self.hard_features_dim = hard_features_dim
         
         self.encoder = TransformerEncoder()
-        self.fc = DeepFeedForwardModel(hard_features_dim + embedding_dimension)
+        self.output_dim = output_dim
+        self.fc = DeepFeedForwardModel(hard_features_dim + embedding_dimension,self.output_dim)
 
     def forward(self, hard_features, embeddings):
         batch_size = hard_features.shape[0]
@@ -26,5 +26,5 @@ class TransformerEncoderModel(BaseModel):
 
         encoded_embeddings = self.encoder(embeddings)
         output = self.fc(torch.cat([hard_features, encoded_embeddings], dim=1))
-        assert output.shape == (batch_size, 1)
+        assert output.shape == (batch_size, self.output_dim)
         return output

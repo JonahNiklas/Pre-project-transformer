@@ -1,17 +1,17 @@
 import pandas as pd
 import numpy as np
-from constants import categorical_features, percentage_features
+from p2p_lending.constants import categorical_features, percentage_features
 import logging
 
 logger = logging.getLogger(__name__)
 
-def preprocess_data(data):
+def preprocess_data(data,percentage_cases=1):
     data = _extract_emp_length(data)
     data = _log_transform_like_paper(data)
     data = _one_hot_encode_features(data, features=categorical_features)
     data = _scale_percentage_features(data, features=percentage_features)
     data = _encode_target(data)
-
+    data = data.sample(frac=percentage_cases)
     return data
 
 

@@ -1,6 +1,6 @@
 import numpy as np
 import logging
-from constants import transformer_config, embedding_dimension
+from p2p_lending.constants import transformer_config, embedding_dimension
 import nltk
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ def _load_glove(file_path):
     return embeddings
 
 
-glove_path = f"./glove/glove.6B.{embedding_dimension}d.txt"
+glove_path = f"./p2p_lending/glove/glove.6B.{embedding_dimension}d.txt"
 glove_embeddings = _load_glove(glove_path)
 
 
