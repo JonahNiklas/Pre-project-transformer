@@ -1,5 +1,5 @@
 import torch.nn as nn
-
+import torch
 from p2p_lending.constants import deep_feed_forward_hidden_units
 
 from p2p_lending.models.base_model import BaseModel

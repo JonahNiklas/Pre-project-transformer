@@ -1,13 +1,14 @@
 import logging
 import os
 
+import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
 from sklearn.metrics import recall_score, roc_auc_score
 from tqdm import tqdm
 
-from p2p_lending.constants import num_epochs, prediction_threshold, device, weight_decay, learning_rate, numerical_features
+from p2p_lending.constants import num_epochs, prediction_threshold, device, weight_decay, learning_rate, numerical_features, random_state_for_split
 from p2p_lending.dataset import Dataset
 from p2p_lending.utils.loss_attenuation import loss_attenuation
 from p2p_lending.get_data import get_data
@@ -41,20 +42,20 @@ def main():
     )  # -1 because we drop the target column and description column
 
     models: list[BaseModel] = [
-        # TransformerEncoderModel(num_hard_features).to(device),
+        # TransformerEncoderModel(num_hard_features,2).to(device),
         # LogisticRegressionModel(num_hard_features).to(device),
         DeepFeedForwardModel(num_hard_features, 2).to(device),
         # DeepFeedForwardModel(num_hard_features, 1).to(device),
     ]
 
-    train_data, dev_data, test_data = split_data(processed_data)
+    train_data, dev_data, test_data = split_data(processed_data, random_state_for_split)
     train_data = oversample_minority_class(train_data)
     train_data, dev_data, test_data = normalize(train_data, dev_data, test_data, numerical_features)
 
     logger.info(f"Creating embeddings for train, dev and test datasets")
-    train_dataset_with_embeddings = create_dataset_with_embeddings(train_data)
-    dev_dataset_with_embeddings = create_dataset_with_embeddings(dev_data)
-    test_dataset_with_embeddings = create_dataset_with_embeddings(test_data)
+    train_dataset_with_embeddings = create_dataset_with_embeddings(train_data,"train")
+    dev_dataset_with_embeddings = create_dataset_with_embeddings(dev_data,"dev")
+    test_dataset_with_embeddings = create_dataset_with_embeddings(test_data,"test")
 
     for model in models:
         logger.info(f"\n\nTraining model: {model.__class__.__name__}")
@@ -95,22 +96,22 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
             optimizer.step()
             train_loss += loss.item()
 
-        dev_auc, dev_gmean, _ = evaluate(model, dev_dataset)
+        dev_auc, dev_gmean, correlation = evaluate(model, dev_dataset, correlation=True)
         if dev_auc > best_dev_auc:
             best_dev_auc = dev_auc
             best_dev_gmean = dev_gmean
             logger.info("New best dev AUC and G-mean, saving model")
-            os.makedirs("model_weights", exist_ok=True)
+            os.makedirs("p2p_lending/model_weights", exist_ok=True)
             torch.save(
-                model.state_dict(), f"model_weights/{model.__class__.__name__}.pth"
+                model.state_dict(), f"p2p_lending/model_weights/{model.__class__.__name__}.pth"
             )
 
         avg_loss = train_loss / len(train_loader)
         logger.info(
-            f"Epoch {epoch+1}/{num_epochs}, Average Loss: {avg_loss:.4f}, Dev AUC: {best_dev_auc:.4f}, Dev G-mean: {best_dev_gmean:.4f}"
+            f"Epoch {epoch+1}/{num_epochs}, Average Loss: {avg_loss:.4f}, Dev AUC: {best_dev_auc:.4f}, Dev G-mean: {best_dev_gmean:.4f}, Correlation: {correlation:.4f}"
         )
         model.load_state_dict(
-            torch.load(f"model_weights/{model.__class__.__name__}.pth")
+            torch.load(f"p2p_lending/model_weights/{model.__class__.__name__}.pth")
         )
 
 
@@ -144,10 +145,8 @@ def evaluate(model: BaseModel, test_dataset: Dataset, correlation: bool = False)
     if model.output_dim != 2 or not correlation:
         return auc, gmean, None
     
-    log_variances = log_variance.tolist()
-    logger.info(f"Max log_variance: {max(log_variances):.4f}")
-    logger.info(f"Min log_variance: {min(log_variances):.4f}")
-    logger.info(f"Mean log_variance: {sum(log_variances) / len(log_variances):.4f}")
+    stds = np.sqrt(np.exp(log_variance.tolist()))
+    logger.info(f"Mean, Min & Max STD [{max(stds):.4f}, {min(stds):.4f}, {sum(stds) / len(stds):.4f}]")
     error = torch.abs(probas - torch.tensor(targets))
     correlation = torch.corrcoef(torch.stack((log_variance, error)))[0, 1]
     return auc, gmean, correlation

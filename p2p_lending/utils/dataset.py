@@ -1,27 +1,35 @@
 import logging
 
+import numpy as np
 import pandas as pd
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.utils import resample
-from p2p_lending.constants import target_column, train_dev_test_split, over_sampling_ratio
+from p2p_lending.constants import target_column, train_dev_test_split, over_sampling_ratio, random_state_for_split
 
 from p2p_lending.dataset import Dataset
 from p2p_lending.embedding import embed_descriptions
 
 logger = logging.getLogger(__name__)
 
-def create_dataset_with_embeddings(df: pd.DataFrame) -> Dataset:
-    embeddings = embed_descriptions(df["desc"])
+def create_dataset_with_embeddings(df: pd.DataFrame,filename:str, random_state: int = random_state_for_split) -> Dataset:
+    try:
+        embeddings = np.load(f"./p2p_lending/data/{filename}_embeddings_{random_state}.npy")
+        logger.info(f"Loaded {filename} embeddings from cache")
+    except FileNotFoundError:
+        logger.info(f"{filename} embeddings not found in cache for random state {random_state}")
+        embeddings = embed_descriptions(df["desc"])
+        np.save(f"./p2p_lending/data/{filename}_embeddings_{random_state}.npy", embeddings)
+
     df = df.drop(columns=["desc"])
     return Dataset(df, embeddings)
 
 def split_data(
-    data: pd.DataFrame, split: tuple[float, float, float] = train_dev_test_split
+    data: pd.DataFrame, random_state: int = random_state_for_split, split: tuple[float, float, float] = train_dev_test_split
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    train_data, test_data = train_test_split(data, test_size=split[2])
+    train_data, test_data = train_test_split(data, test_size=split[2], random_state=random_state)
     train_data, dev_data = train_test_split(
-        train_data, test_size=split[1] / (split[0] + split[1])
+        train_data, test_size=split[1] / (split[0] + split[1]), random_state=random_state
     )
 
     return train_data, dev_data, test_data

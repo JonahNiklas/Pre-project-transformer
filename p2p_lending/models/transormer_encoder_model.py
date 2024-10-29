@@ -6,7 +6,7 @@ from p2p_lending.constants import transformer_config, embedding_dimension
 
 
 class TransformerEncoderModel(BaseModel):
-    def __init__(self, hard_features_dim: int, output_dim: int = 2):
+    def __init__(self, hard_features_dim: int, output_dim: int):
         super(TransformerEncoderModel, self).__init__()
         self.is_text_model = True
         self.hard_features_dim = hard_features_dim
