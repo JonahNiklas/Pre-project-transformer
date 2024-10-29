@@ -17,8 +17,14 @@ class DeepFeedForwardModel(BaseModel):
             ),
             nn.ReLU(),
             nn.Linear(deep_feed_forward_hidden_units[1], output_dim),
-            nn.Sigmoid(),
         )
 
     def forward(self, x):
-        return self.sequential(x)
+        output = self.sequential(x)
+        return torch.cat(
+            [
+                torch.sigmoid(output[:, 0:1]),
+                output[:, 1:2],
+            ],
+            dim=1,
+        )

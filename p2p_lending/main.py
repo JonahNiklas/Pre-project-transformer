@@ -41,7 +41,7 @@ def main():
     )  # -1 because we drop the target column and description column
 
     models: list[BaseModel] = [
-        TransformerEncoderModel(num_hard_features).to(device),
+        # TransformerEncoderModel(num_hard_features).to(device),
         # LogisticRegressionModel(num_hard_features).to(device),
         DeepFeedForwardModel(num_hard_features, 2).to(device),
         # DeepFeedForwardModel(num_hard_features, 1).to(device),
