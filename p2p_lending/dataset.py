@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from constants import target_column
+from p2p_lending.constants import target_column
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

@@ -8,13 +8,13 @@
             "name": "main",
             "type": "debugpy",
             "request": "launch",
-            "module": "main"
+            "module": "p2p_lending.main"
         }, 
         {
             "name": "main without cache",
             "type": "debugpy",
             "request": "launch",
-            "module": "main",
+            "module": "p2p_lending.main",
             "env": {
                 "USE_CACHE": "false"
             }

@@ -1,4 +1,4 @@
-from transformer_config import TransformerConfig
+from p2p_lending.transformer_config import TransformerConfig
 import torch
 
 target_column = "loan_status"
@@ -9,6 +9,7 @@ embedding_dimension = 200
 over_sampling_ratio = 0.5
 weight_decay = 0.005
 learning_rate = 0.0005
+random_state_for_split = 3213
 transformer_config = TransformerConfig.model_validate(
     {
         "d_ff": 50,

@@ -1,7 +1,7 @@
 from torch import nn
 import torch
 import math
-from constants import transformer_config as config, embedding_dimension
+from p2p_lending.constants import transformer_config as config, embedding_dimension
 
 class TransformerEncoder(nn.Module):
     def __init__(self):

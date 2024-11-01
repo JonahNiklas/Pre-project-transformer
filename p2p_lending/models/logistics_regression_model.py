@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from models.base_model import BaseModel
+from p2p_lending.models.base_model import BaseModel
 
 class LogisticRegressionModel(BaseModel):
     def __init__(self, input_dim):
