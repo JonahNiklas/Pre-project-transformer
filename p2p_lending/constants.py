@@ -1,6 +1,9 @@
 from p2p_lending.transformer_config import TransformerConfig
 import torch
 
+dropout_probability = 0.1
+mc_dropout_samples = 30
+
 target_column = "loan_status"
 year_range = (2007, 2014)
 num_epochs = 10

@@ -1,7 +1,7 @@
-import torch.nn as nn
 import torch
-from p2p_lending.constants import deep_feed_forward_hidden_units
+import torch.nn as nn
 
+from p2p_lending.constants import deep_feed_forward_hidden_units, dropout_probability
 from p2p_lending.models.base_model import BaseModel
 
 
@@ -10,12 +10,15 @@ class DeepFeedForwardModel(BaseModel):
         super(DeepFeedForwardModel, self).__init__()
         self.output_dim = output_dim
         self.sequential = nn.Sequential(
+            nn.Dropout(dropout_probability),
             nn.Linear(input_dim, deep_feed_forward_hidden_units[0]),
             nn.ReLU(),
+            nn.Dropout(dropout_probability),
             nn.Linear(
                 deep_feed_forward_hidden_units[0], deep_feed_forward_hidden_units[1]
             ),
             nn.ReLU(),
+            nn.Dropout(dropout_probability),
             nn.Linear(deep_feed_forward_hidden_units[1], output_dim),
         )
 
