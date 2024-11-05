@@ -24,10 +24,12 @@ class DeepFeedForwardModel(BaseModel):
 
     def forward(self, x):
         output = self.sequential(x)
-        return torch.cat(
+        output = torch.cat(
             [
-                torch.sigmoid(output[:, 0:1]),
-                output[:, 1:2],
+                torch.sigmoid(torch.clamp(output[:, 0:1], -20, 20)),
+                torch.clamp(output[:, 1:2], -1e6, 1e6),
             ],
             dim=1,
         )
+        assert not torch.isnan(output).any()
+        return output

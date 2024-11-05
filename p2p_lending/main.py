@@ -16,6 +16,7 @@ from p2p_lending.constants import (
     prediction_threshold,
     random_state_for_split,
     weight_decay,
+    batch_size,
 )
 from p2p_lending.dataset import Dataset
 from p2p_lending.get_data import get_data
@@ -68,7 +69,8 @@ def main():
     test_dataset_with_embeddings = create_dataset_with_embeddings(test_data, "test")
 
     for model in models:
-        logger.info(f"\n\nTraining model: {model.__class__.__name__}")
+        print("")
+        logger.info(f"Training model: {model.__class__.__name__}")
         train(model, train_dataset_with_embeddings, dev_dataset_with_embeddings)
 
     for model in models:
@@ -92,7 +94,7 @@ def main():
 
 def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
     train_loader = torch.utils.data.DataLoader(
-        training_dataset, batch_size=64, shuffle=True
+        training_dataset, batch_size=batch_size, shuffle=True
     )
 
     optimizer = torch.optim.Adam(
@@ -185,7 +187,7 @@ def evaluate(model: BaseModel, test_dataset: Dataset, check_correlation: bool = 
     logger.debug(
         f"Epistemic mean, min & max STD [{epistemic_stds.mean():.4f}, {epistemic_stds.min():.4f}, {epistemic_stds.max():.4f}]"
     )
-    error = torch.abs(probas - torch.tensor(targets))
+    error = torch.abs(predictions - torch.tensor(targets))
     aleatoric_error_correlation = torch.corrcoef(
         torch.stack((aleatoric_stds, error))
     )[0, 1]
