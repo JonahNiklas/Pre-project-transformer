@@ -133,7 +133,12 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
 
         avg_loss = train_loss / len(train_loader)
         logger.info(
-            f"Epoch {epoch+1}/{num_epochs}, Average Loss: {avg_loss:.4f}, Dev AUC: {best_dev_auc:.4f}, Dev G-mean: {best_dev_gmean:.4f}, Aleatoric error correlation: {aleatoric_error_correlation:.4f}, Epistemic error correlation: {epistemic_error_correlation:.4f}"
+            f"Epoch {epoch+1}/{num_epochs}"
+            f"\nAverage Loss: {avg_loss:.4f}"
+            f", Dev AUC: {best_dev_auc:.4f}"
+            f", Dev G-mean: {best_dev_gmean:.4f}"
+            f"\nAleatoric error correlation: {aleatoric_error_correlation:.4f}"
+            f"\nEpistemic error correlation: {epistemic_error_correlation:.4f}"
         )
         model.load_state_dict(
             torch.load(f"p2p_lending/model_weights/{model.__class__.__name__}.pth")
@@ -174,11 +179,11 @@ def evaluate(model: BaseModel, test_dataset: Dataset, check_correlation: bool = 
 
     aleatoric_stds = torch.sqrt(torch.exp(aleatoric_log_variances))
     logger.info(
-        f"Aleatoric mean, min & max STD [{max(aleatoric_stds):.4f}, {min(aleatoric_stds):.4f}, {sum(aleatoric_stds) / len(aleatoric_stds):.4f}]"
+        f"Aleatoric mean, min & max STD [{aleatoric_stds.mean():.4f}, {aleatoric_stds.min():.4f}, {aleatoric_stds.max():.4f}]"
     )
     epistemic_stds = torch.sqrt(epistemic_variances)
     logger.info(
-        f"Epistemic mean, min & max STD [{max(epistemic_stds):.4f}, {min(epistemic_stds):.4f}, {sum(epistemic_stds) / len(epistemic_stds):.4f}]"
+        f"Epistemic mean, min & max STD [{epistemic_stds.mean():.4f}, {epistemic_stds.min():.4f}, {epistemic_stds.max():.4f}]"
     )
     error = torch.abs(probas - torch.tensor(targets))
     aleatoric_error_correlation = torch.corrcoef(

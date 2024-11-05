@@ -44,4 +44,4 @@ def _enable_test_time_dropout(model):
         if isinstance(module, nn.Dropout):
             counter += 1
             module.train()
-    logger.debug(f"MC Dropout: Enabled {counter} dropout layers for test time dropout")
+    # logger.debug(f"MC Dropout: Enabled {counter} dropout layers for test time dropout")
