@@ -20,6 +20,8 @@ def predict_with_mc_dropout(model, data, embedding=None):
 
     if model.output_dim == 2:
         probas, log_variances = outputs[:, :, 0], outputs[:, :, 1]
+    else:
+        probas = outputs
 
     epistemic_variance = probas.var(dim=0)
     probas = probas.mean(dim=0)
@@ -39,9 +41,6 @@ def predict_with_mc_dropout(model, data, embedding=None):
 
 
 def _enable_test_time_dropout(model):
-    counter = 0
     for module in model.modules():
         if isinstance(module, nn.Dropout):
-            counter += 1
             module.train()
-    # logger.debug(f"MC Dropout: Enabled {counter} dropout layers for test time dropout")
