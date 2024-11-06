@@ -5,7 +5,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def preprocess_data(data,percentage_cases=1):
+
+def preprocess_data(data: pd.DataFrame, percentage_cases: float = 1) -> pd.DataFrame:
     data = _extract_emp_length(data)
     data = _log_transform_like_paper(data)
     data = _one_hot_encode_features(data, features=categorical_features)
@@ -15,29 +16,30 @@ def preprocess_data(data,percentage_cases=1):
     return data
 
 
-def _one_hot_encode_features(data, features):
+def _one_hot_encode_features(data: pd.DataFrame, features: list[str]) -> pd.DataFrame:
     return pd.get_dummies(data, columns=features)
 
-def _scale_percentage_features(data, features):
+
+def _scale_percentage_features(data: pd.DataFrame, features: list[str]) -> pd.DataFrame:
     for feature in features:
         data[feature] = data[feature] / 100
     return data
 
-def _extract_emp_length(data):
+
+def _extract_emp_length(data: pd.DataFrame) -> pd.DataFrame:
     indexes = data[data["emp_length"] == "< 1 year"].index
     data["emp_length"] = data["emp_length"].str.extract("(\d+)").astype(float)
     data.loc[indexes, "emp_length"] = 0.5
     return data
 
 
-def _log_transform_like_paper(data):
+def _log_transform_like_paper(data: pd.DataFrame) -> pd.DataFrame:
     data["loan_amnt"] = np.log(data["loan_amnt"]).astype(float)
     data["annual_inc"] = np.log(data["annual_inc"]).astype(float)
     return data
 
 
-def _encode_target(data):
+def _encode_target(data: pd.DataFrame) -> pd.DataFrame:
     target_mapping = {"Fully Paid": 1, "Charged Off": 0}
     data["loan_status"] = data["loan_status"].map(target_mapping)
     return data
-

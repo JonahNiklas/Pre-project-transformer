@@ -15,7 +15,7 @@ class TransformerEncoderModel(BaseModel):
         self.output_dim = output_dim
         self.fc = DeepFeedForwardModel(hard_features_dim + embedding_dimension,self.output_dim)
 
-    def forward(self, hard_features, embeddings):
+    def forward(self, hard_features: torch.Tensor, embeddings: torch.Tensor) -> torch.Tensor:
         batch_size = hard_features.shape[0]
         assert hard_features.shape == (batch_size, self.hard_features_dim)
         assert embeddings.shape == (
@@ -24,7 +24,7 @@ class TransformerEncoderModel(BaseModel):
             embedding_dimension,
         )
 
-        encoded_embeddings = self.encoder(embeddings)
-        output = self.fc(torch.cat([hard_features, encoded_embeddings], dim=1))
+        encoded_embeddings: torch.Tensor = self.encoder(embeddings)
+        output: torch.Tensor = self.fc(torch.cat([hard_features, encoded_embeddings], dim=1))
         assert output.shape == (batch_size, self.output_dim)
         return output

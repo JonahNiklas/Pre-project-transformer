@@ -31,7 +31,7 @@ from p2p_lending.utils.dataset import (
     oversample_minority_class,
     split_data,
 )
-from p2p_lending.utils.loss_attenuation import loss_attenuation
+from p2p_lending.utils.loss_attenuation import LossAttenuation
 from p2p_lending.utils.mc_dropout import predict_with_mc_dropout
 
 pd.options.mode.copy_on_write = True
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 logger.debug(f"Using device: {device}")
 
 
-def main():
+def main() -> None:
     filtered_data = get_data("p2p_lending/data/accepted_2007_to_2018q4.csv")
     processed_data = preprocess_data(filtered_data, percentage_cases=1)
 
@@ -79,7 +79,7 @@ def main():
         evaluate(model, test_dataset_with_embeddings, "Test")
 
 
-def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
+def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset) -> None:
     train_loader = torch.utils.data.DataLoader(
         training_dataset, batch_size=batch_size, shuffle=True
     )
@@ -87,11 +87,13 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
     optimizer = torch.optim.Adam(
         model.parameters(), weight_decay=weight_decay, lr=learning_rate
     )
-    criterion = nn.BCELoss()
+
     if model.output_dim == 2:
-        criterion = loss_attenuation
-    best_dev_auc = 0
-    best_dev_gmean = 0
+        criterion: nn.Module = LossAttenuation()
+    else:
+        criterion = nn.BCELoss()
+    best_dev_auc: float = 0.0
+    best_dev_gmean: float = 0.0
 
     for epoch in tqdm(range(num_epochs), desc="Epochs"):
         model.train()
@@ -125,7 +127,9 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
         )
 
 
-def evaluate(model: BaseModel, dataset: Dataset, dataset_name: str):
+def evaluate(
+    model: BaseModel, dataset: Dataset, dataset_name: str
+) -> tuple[float, float]:
     probas, targets, epistemic_variances, aleatoric_log_variances = _get_predictions(
         model, dataset
     )
@@ -161,12 +165,12 @@ def evaluate(model: BaseModel, dataset: Dataset, dataset_name: str):
 
 
 def _get_predictions_with_high_confidence(
-    probas,
-    epistemic_variances,
-    aleatoric_log_variances,
-    targets,
-    confidence_threshold=0.5,
-):
+    probas: torch.Tensor,
+    epistemic_variances: torch.Tensor,
+    aleatoric_log_variances: torch.Tensor,
+    targets: torch.Tensor,
+    confidence_threshold: float = 0.5,
+) -> tuple[torch.Tensor, torch.Tensor]:
     aleatoric_variances = torch.exp(aleatoric_log_variances)
     total_variance = epistemic_variances + aleatoric_variances
     total_variance_threshold = total_variance.quantile(confidence_threshold)
@@ -174,7 +178,9 @@ def _get_predictions_with_high_confidence(
     return probas[high_confidence_indices], targets[high_confidence_indices]
 
 
-def _get_auc_and_gmean(probas, targets):
+def _get_auc_and_gmean(
+    probas: torch.Tensor, targets: torch.Tensor
+) -> tuple[float, float]:
     auc = roc_auc_score(targets, probas)
     predictions = (probas >= prediction_threshold).float()
     sensitivity = recall_score(targets, predictions)
@@ -184,8 +190,11 @@ def _get_auc_and_gmean(probas, targets):
 
 
 def _get_uncertainty_correlation(
-    probas, epistemic_variances, aleatoric_log_variances, targets
-):
+    probas: torch.Tensor,
+    epistemic_variances: torch.Tensor,
+    aleatoric_log_variances: torch.Tensor,
+    targets: torch.Tensor,
+) -> tuple[float, float]:
     predictions = (probas >= prediction_threshold).float()
     aleatoric_stds = torch.sqrt(torch.exp(aleatoric_log_variances))
     epistemic_stds = torch.sqrt(epistemic_variances)
@@ -195,17 +204,19 @@ def _get_uncertainty_correlation(
     logger.debug(
         f"Epistemic mean, min & max STD [{epistemic_stds.mean():.4f}, {epistemic_stds.min():.4f}, {epistemic_stds.max():.4f}]"
     )
-    error = torch.abs(predictions - torch.tensor(targets))
+    error = torch.abs(predictions - targets)
     aleatoric_error_correlation = torch.corrcoef(torch.stack((aleatoric_stds, error)))[
         0, 1
-    ]
+    ].item()
     epistemic_error_correlation = torch.corrcoef(torch.stack((epistemic_stds, error)))[
         0, 1
-    ]
+    ].item()
     return aleatoric_error_correlation, epistemic_error_correlation
 
 
-def _get_predictions(model: BaseModel, test_dataset: Dataset):
+def _get_predictions(
+    model: BaseModel, test_dataset: Dataset
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     test_loader = torch.utils.data.DataLoader(
         test_dataset, batch_size=64, shuffle=False
     )
@@ -225,12 +236,12 @@ def _get_predictions(model: BaseModel, test_dataset: Dataset):
             epistemic_variances.extend(epistemic_variance.tolist())
             aleatoric_log_variances.extend(aleatoric_log_variance.tolist())
 
-    probas = torch.tensor(probas)
-    targets = torch.tensor(targets)
-    epistemic_variances = torch.tensor(epistemic_variances)
-    aleatoric_log_variances = torch.tensor(aleatoric_log_variances)
-
-    return probas, targets, epistemic_variances, aleatoric_log_variances
+    return (
+        torch.tensor(probas),
+        torch.tensor(targets),
+        torch.tensor(epistemic_variances),
+        torch.tensor(aleatoric_log_variances),
+    )
 
 
 if __name__ == "__main__":

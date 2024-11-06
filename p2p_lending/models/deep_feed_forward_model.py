@@ -6,7 +6,7 @@ from p2p_lending.models.base_model import BaseModel
 
 
 class DeepFeedForwardModel(BaseModel):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, input_dim: int, output_dim: int) -> None:
         super(DeepFeedForwardModel, self).__init__()
         self.output_dim = output_dim
         self.sequential = nn.Sequential(
@@ -22,8 +22,8 @@ class DeepFeedForwardModel(BaseModel):
             nn.Linear(deep_feed_forward_hidden_units[1], output_dim),
         )
 
-    def forward(self, x):
-        output = self.sequential(x)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        output: torch.Tensor = self.sequential(x)
         output = torch.cat(
             [
                 torch.sigmoid(torch.clamp(output[:, 0:1], -20, 20)),

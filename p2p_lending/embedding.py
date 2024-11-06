@@ -7,9 +7,9 @@ logger = logging.getLogger(__name__)
 
 
 # Load GloVe embeddings
-def _load_glove(file_path):
+def _load_glove(file_path: str) -> dict[str, np.ndarray]:
     logger.info(f"Loading GloVe embeddings from {file_path}")
-    embeddings = {}
+    embeddings: dict[str, np.ndarray] = {}
     with open(file_path, "r", encoding="utf-8") as f:
         for line in f:
             values = line.split()
@@ -24,8 +24,8 @@ glove_path = f"./p2p_lending/glove/glove.6B.{embedding_dimension}d.txt"
 glove_embeddings = _load_glove(glove_path)
 
 
-def embed_descriptions(descriptions: str):
-    embeddings = np.array([_get_sentence_embedding(desc) for desc in descriptions])
+def embed_descriptions(descriptions: list[str]) -> np.ndarray:
+    embeddings: np.ndarray = np.array([_get_sentence_embedding(desc) for desc in descriptions])
 
     # Calculate the percentage of words not found in embeddings
     total_words = sum(len(tokenize_text(desc)) for desc in descriptions)
@@ -48,16 +48,16 @@ def embed_descriptions(descriptions: str):
     return embeddings
 
 
-def tokenize_text(text) -> list[str]:
-    tokens = nltk.word_tokenize(text)
+def tokenize_text(text: str) -> list[str]:
+    tokens: list[str] = nltk.word_tokenize(text)
     tokens = [token.lower() for token in tokens]
     return tokens
 
 
-def _get_sentence_embedding(description: str):
-    tokens = tokenize_text(description)
-    words = tokens[: transformer_config.max_seq_length]
-    word_embeddings = [
+def _get_sentence_embedding(description: str) -> np.ndarray:
+    tokens: list[str] = tokenize_text(description)
+    words: list[str] = tokens[: transformer_config.max_seq_length]
+    word_embeddings_list: list[np.ndarray] = [
         (
             glove_embeddings[word]
             if word in glove_embeddings
@@ -66,8 +66,8 @@ def _get_sentence_embedding(description: str):
         for word in words
     ]
     word_embeddings = np.pad(
-        word_embeddings,
-        ((0, transformer_config.max_seq_length - len(word_embeddings)), (0, 0)),
+        word_embeddings_list,
+        ((0, transformer_config.max_seq_length - len(word_embeddings_list)), (0, 0)),
         mode="constant",
         constant_values=0,
     )
