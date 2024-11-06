@@ -161,6 +161,12 @@ def evaluate(
         f", {dataset_name} G-mean with high confidence: {gmean_with_high_confidence:.4f}"
     )
 
+    if dataset_name == "Test":
+        np.save(f'p2p_lending/results/probas_testseed_{random_state_for_split}.npy', probas)
+        np.save(f'p2p_lending/results/targets_testseed_{random_state_for_split}.npy', targets)
+        np.save(f'p2p_lending/results/epistemic_variances_testseed_{random_state_for_split}.npy', epistemic_variances)
+        np.save(f'p2p_lending/results/aleatoric_log_variances_testseed_{random_state_for_split}.npy', aleatoric_log_variances)
+        
     return auc, gmean
 
 
