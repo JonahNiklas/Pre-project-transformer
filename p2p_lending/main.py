@@ -73,23 +73,10 @@ def main():
         logger.info(f"Training model: {model.__class__.__name__}")
         train(model, train_dataset_with_embeddings, dev_dataset_with_embeddings)
 
+    print("")
+    logger.info("Evaluating on test set")
     for model in models:
-        (
-            auc_test_set,
-            gmean_test_set,
-            aleatoric_error_correlation,
-            epistemic_error_correlation,
-        ) = evaluate(model, test_dataset_with_embeddings, check_correlation=True)
-        logger.info(
-            f"{model.__class__.__name__} - Test set - AUC: {auc_test_set:.4f}, G-mean: {gmean_test_set:.4f}"
-        )
-        if (
-            aleatoric_error_correlation is not None
-            and epistemic_error_correlation is not None
-        ):
-            logger.info(
-                f", Aleatoric error correlation: {aleatoric_error_correlation:.4f}, Epistemic error correlation: {epistemic_error_correlation:.4f}"
-            )
+        evaluate(model, test_dataset_with_embeddings, "Test")
 
 
 def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
@@ -106,7 +93,7 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
     best_dev_auc = 0
     best_dev_gmean = 0
 
-    for epoch in tqdm(range(num_epochs), desc="Epochs", leave=False):
+    for epoch in tqdm(range(num_epochs), desc="Epochs"):
         model.train()
         train_loss = 0
         for i, (data, embedding, target) in enumerate(train_loader):
@@ -120,9 +107,7 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
             optimizer.step()
             train_loss += loss.item()
 
-        dev_auc, dev_gmean, aleatoric_error_correlation, epistemic_error_correlation = evaluate(
-            model, dev_dataset, check_correlation=True
-        )
+        dev_auc, dev_gmean = evaluate(model, dev_dataset, "Devset")
         if dev_auc > best_dev_auc:
             best_dev_auc = dev_auc
             best_dev_gmean = dev_gmean
@@ -134,20 +119,93 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset):
             )
 
         avg_loss = train_loss / len(train_loader)
-        logger.info(
-            f"Epoch {epoch+1}/{num_epochs}"
-            f": Average Loss: {avg_loss:.4f}"
-            f", Dev AUC: {best_dev_auc:.4f}"
-            f", Dev G-mean: {best_dev_gmean:.4f}"
-            f", Aleatoric error correlation: {aleatoric_error_correlation:.4f}"
-            f", Epistemic error correlation: {epistemic_error_correlation:.4f}"
-        )
+        logger.info(f"Epoch {epoch+1}/{num_epochs}: Average Loss: {avg_loss:.4f}")
         model.load_state_dict(
             torch.load(f"p2p_lending/model_weights/{model.__class__.__name__}.pth")
         )
 
 
-def evaluate(model: BaseModel, test_dataset: Dataset, check_correlation: bool = False):
+def evaluate(model: BaseModel, dataset: Dataset, dataset_name: str):
+    probas, targets, epistemic_variances, aleatoric_log_variances = _get_predictions(
+        model, dataset
+    )
+    auc, gmean = _get_auc_and_gmean(probas, targets)
+    aleatoric_error_correlation, epistemic_error_correlation = (
+        _get_uncertainty_correlation(
+            probas, epistemic_variances, aleatoric_log_variances, targets
+        )
+    )
+
+    logger.info(
+        f"{dataset_name} AUC: {auc:.4f}"
+        f", {dataset_name} G-mean: {gmean:.4f}"
+        f", Aleatoric error correlation: {aleatoric_error_correlation:.4f}"
+        f", Epistemic error correlation: {epistemic_error_correlation:.4f}"
+    )
+
+    probas_with_high_confidence, targets_with_high_confidence = (
+        _get_predictions_with_high_confidence(
+            probas, epistemic_variances, aleatoric_log_variances, targets
+        )
+    )
+    auc_with_high_confidence, gmean_with_high_confidence = _get_auc_and_gmean(
+        probas_with_high_confidence,
+        targets_with_high_confidence,
+    )
+    logger.info(
+        f"{dataset_name} AUC with high confidence: {auc_with_high_confidence:.4f}"
+        f", {dataset_name} G-mean with high confidence: {gmean_with_high_confidence:.4f}"
+    )
+
+    return auc, gmean
+
+
+def _get_predictions_with_high_confidence(
+    probas,
+    epistemic_variances,
+    aleatoric_log_variances,
+    targets,
+    confidence_threshold=0.5,
+):
+    aleatoric_variances = torch.exp(aleatoric_log_variances)
+    total_variance = epistemic_variances + aleatoric_variances
+    total_variance_threshold = total_variance.quantile(confidence_threshold)
+    high_confidence_indices = total_variance < total_variance_threshold
+    return probas[high_confidence_indices], targets[high_confidence_indices]
+
+
+def _get_auc_and_gmean(probas, targets):
+    auc = roc_auc_score(targets, probas)
+    predictions = (probas >= prediction_threshold).float()
+    sensitivity = recall_score(targets, predictions)
+    specificity = recall_score(targets, predictions, pos_label=0)
+    gmean = (sensitivity * specificity) ** 0.5
+    return auc, gmean
+
+
+def _get_uncertainty_correlation(
+    probas, epistemic_variances, aleatoric_log_variances, targets
+):
+    predictions = (probas >= prediction_threshold).float()
+    aleatoric_stds = torch.sqrt(torch.exp(aleatoric_log_variances))
+    epistemic_stds = torch.sqrt(epistemic_variances)
+    logger.debug(
+        f"Aleatoric mean, min & max STD [{aleatoric_stds.mean():.4f}, {aleatoric_stds.min():.4f}, {aleatoric_stds.max():.4f}]"
+    )
+    logger.debug(
+        f"Epistemic mean, min & max STD [{epistemic_stds.mean():.4f}, {epistemic_stds.min():.4f}, {epistemic_stds.max():.4f}]"
+    )
+    error = torch.abs(predictions - torch.tensor(targets))
+    aleatoric_error_correlation = torch.corrcoef(torch.stack((aleatoric_stds, error)))[
+        0, 1
+    ]
+    epistemic_error_correlation = torch.corrcoef(torch.stack((epistemic_stds, error)))[
+        0, 1
+    ]
+    return aleatoric_error_correlation, epistemic_error_correlation
+
+
+def _get_predictions(model: BaseModel, test_dataset: Dataset):
     test_loader = torch.utils.data.DataLoader(
         test_dataset, batch_size=64, shuffle=False
     )
@@ -168,33 +226,11 @@ def evaluate(model: BaseModel, test_dataset: Dataset, check_correlation: bool = 
             aleatoric_log_variances.extend(aleatoric_log_variance.tolist())
 
     probas = torch.tensor(probas)
+    targets = torch.tensor(targets)
     epistemic_variances = torch.tensor(epistemic_variances)
     aleatoric_log_variances = torch.tensor(aleatoric_log_variances)
-    auc = roc_auc_score(targets, probas)
-    predictions = (probas >= prediction_threshold).float()
-    sensitivity = recall_score(targets, predictions)
-    specificity = recall_score(targets, predictions, pos_label=0)
-    gmean = (sensitivity * specificity) ** 0.5
 
-    if model.output_dim != 2 or not check_correlation:
-        return auc, gmean, None
-
-    aleatoric_stds = torch.sqrt(torch.exp(aleatoric_log_variances))
-    logger.debug(
-        f"Aleatoric mean, min & max STD [{aleatoric_stds.mean():.4f}, {aleatoric_stds.min():.4f}, {aleatoric_stds.max():.4f}]"
-    )
-    epistemic_stds = torch.sqrt(epistemic_variances)
-    logger.debug(
-        f"Epistemic mean, min & max STD [{epistemic_stds.mean():.4f}, {epistemic_stds.min():.4f}, {epistemic_stds.max():.4f}]"
-    )
-    error = torch.abs(predictions - torch.tensor(targets))
-    aleatoric_error_correlation = torch.corrcoef(
-        torch.stack((aleatoric_stds, error))
-    )[0, 1]
-    epistemic_error_correlation = torch.corrcoef(
-        torch.stack((epistemic_stds, error))
-    )[0, 1]
-    return auc, gmean, aleatoric_error_correlation, epistemic_error_correlation
+    return probas, targets, epistemic_variances, aleatoric_log_variances
 
 
 if __name__ == "__main__":
