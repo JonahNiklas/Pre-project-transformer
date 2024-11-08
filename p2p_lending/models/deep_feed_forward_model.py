@@ -26,7 +26,7 @@ class DeepFeedForwardModel(BaseModel):
         output: torch.Tensor = self.sequential(x)
         output = torch.cat(
             [
-                torch.sigmoid(torch.clamp(output[:, 0:1], -20, 20)),
+                torch.clamp(output[:, 0:1], -20, 20),
                 torch.clamp(output[:, 1:2], -1e6, 1e6),
             ],
             dim=1,

@@ -29,7 +29,11 @@ def predict_with_mc_dropout(
         probas = outputs
 
     epistemic_variance = probas.var(dim=0)
+    probas = nn.Sigmoid()(probas)
     probas = probas.mean(dim=0)
+
+    if model.output_dim == 1:
+        return probas, epistemic_variance, None
 
     aleatoric_log_variance = log_variances.mean(dim=0)
 
