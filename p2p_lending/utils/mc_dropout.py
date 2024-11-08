@@ -33,7 +33,7 @@ def predict_with_mc_dropout(
     probas = probas.mean(dim=0)
 
     if model.output_dim == 1:
-        return probas, epistemic_variance, None
+        return probas, epistemic_variance, torch.zeros_like(probas)
 
     aleatoric_log_variance = log_variances.mean(dim=0)
 
@@ -45,6 +45,22 @@ def predict_with_mc_dropout(
     )
     return probas, epistemic_variance, aleatoric_log_variance
 
+def predict(model: BaseModel, data: torch.Tensor, embedding: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+    
+    if model.is_text_model:
+        outputs = model(data, embedding)
+    else:
+        outputs = model(data)
+
+    if model.output_dim == 2:
+        probas =  outputs[:, 0]
+        log_variances = outputs[:, 1]
+    else:
+        probas = outputs
+        log_variances = torch.zeros_like(probas)
+
+    probas = nn.Sigmoid()(probas)
+    return probas, log_variances
 
 def _enable_test_time_dropout(model: BaseModel) -> None:
     for module in model.modules():

@@ -20,6 +20,7 @@ class TransformerEncoder(nn.Module):
             dim_feedforward=config.d_ff,
             dropout=config.dropout,
             activation=config.activation,
+            batch_first=True,
         )
         self.encoder = nn.TransformerEncoder(  # type: ignore
             encoder_layer=self.encoder_layer,
@@ -32,8 +33,9 @@ class TransformerEncoder(nn.Module):
         x = x.transpose(0, 1)
         assert x.shape == (config.max_seq_length, batch_size, embedding_dimension)
         x = self.pos_encoder(x)
+        x = x.transpose(0, 1) 
+        assert x.shape == (batch_size, config.max_seq_length, embedding_dimension)
         x = self.encoder(x)
-        x = x.transpose(0, 1)  # (batch_size, seq_len, hidden_dim)
         x = x[:, 0, :]  # (batch_size, hidden_dim)
         return x
 

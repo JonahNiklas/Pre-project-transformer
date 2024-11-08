@@ -3,22 +3,23 @@ import torch
 
 dropout_probability = 0.3
 mc_dropout_samples = 100
+use_mc_dropout = True
 
 target_column = "loan_status"
 year_range = (2007, 2014)
-num_epochs = 30
+num_epochs = 20
 batch_size = 128
 train_dev_test_split = (0.8, 0.1, 0.1)
 embedding_dimension = 200
 over_sampling_ratio = 0.5
 weight_decay = 0.005
-learning_rate = 0.0005
+learning_rate = 0.001
 random_state_for_split = 3213
 transformer_config = TransformerConfig.model_validate(
     {
         "d_ff": 50,
         "max_seq_length": 75,
-        "dropout": 0.1,
+        "dropout": 0.3,
         "num_heads": 8, # TODO: should be 8, that is what the paper uses, embedding dimension must be divisible by num_heads
         "activation": "relu",
         "num_layers": 1,

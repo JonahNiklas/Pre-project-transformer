@@ -17,6 +17,7 @@ from p2p_lending.constants import (
     random_state_for_split,
     weight_decay,
     batch_size,
+    use_mc_dropout,
 )
 from p2p_lending.dataset import Dataset
 from p2p_lending.get_data import get_data
@@ -32,11 +33,11 @@ from p2p_lending.utils.dataset import (
     split_data,
 )
 from p2p_lending.utils.loss_attenuation import LossAttenuation
-from p2p_lending.utils.mc_dropout import predict_with_mc_dropout
+from p2p_lending.utils.mc_dropout import predict_with_mc_dropout, predict
 
 pd.options.mode.copy_on_write = True
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 logger.debug(f"Using device: {device}")
@@ -51,9 +52,9 @@ def main() -> None:
     )  # -1 because we drop the target column and description column
 
     models: list[BaseModel] = [
-        # TransformerEncoderModel(num_hard_features,2).to(device),
+        TransformerEncoderModel(num_hard_features,2).to(device),
         # LogisticRegressionModel(num_hard_features).to(device),
-        DeepFeedForwardModel(num_hard_features, 2).to(device),
+        # DeepFeedForwardModel(num_hard_features, 2).to(device),
         # DeepFeedForwardModel(num_hard_features, 1).to(device),
     ]
 
@@ -73,10 +74,10 @@ def main() -> None:
         logger.info(f"Training model: {model.__class__.__name__}")
         train(model, train_dataset_with_embeddings, dev_dataset_with_embeddings)
 
-    print("")
-    logger.info("Evaluating on test set")
-    for model in models:
-        evaluate(model, test_dataset_with_embeddings, "Test")
+    # print("")
+    # logger.info("Evaluating on test set")
+    # for model in models:
+    #     evaluate(model, test_dataset_with_embeddings, "Test", save_to_file=True)
 
 
 def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset) -> None:
@@ -122,13 +123,15 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset) -> 
 
         avg_loss = train_loss / len(train_loader)
         logger.info(f"Epoch {epoch+1}/{num_epochs}: Average Loss: {avg_loss:.4f}")
-        model.load_state_dict(
-            torch.load(f"p2p_lending/model_weights/{model.__class__.__name__}.pth")
-        )
+        
+    model.load_state_dict(
+        torch.load(f"p2p_lending/model_weights/{model.__class__.__name__}.pth")
+    )
+    evaluate(model, dev_dataset, "Final Devset",save_to_file=True)
 
 
 def evaluate(
-    model: BaseModel, dataset: Dataset, dataset_name: str
+    model: BaseModel, dataset: Dataset, dataset_name: str, save_to_file: bool = False
 ) -> tuple[float, float]:
     probas, targets, epistemic_variances, aleatoric_log_variances = _get_predictions(
         model, dataset
@@ -161,11 +164,11 @@ def evaluate(
         f", {dataset_name} G-mean with high confidence: {gmean_with_high_confidence:.4f}"
     )
 
-    if dataset_name == "Test":
-        np.save(f'p2p_lending/results/probas_testseed_{random_state_for_split}.npy', probas)
-        np.save(f'p2p_lending/results/targets_testseed_{random_state_for_split}.npy', targets)
-        np.save(f'p2p_lending/results/epistemic_variances_testseed_{random_state_for_split}.npy', epistemic_variances)
-        np.save(f'p2p_lending/results/aleatoric_log_variances_testseed_{random_state_for_split}.npy', aleatoric_log_variances)
+    if save_to_file:
+        np.save(f'p2p_lending/results/probas_{dataset_name}_{random_state_for_split}.npy', probas)
+        np.save(f'p2p_lending/results/targets_{dataset_name}_{random_state_for_split}.npy', targets)
+        np.save(f'p2p_lending/results/epistemic_variances_{dataset_name}_{random_state_for_split}.npy', epistemic_variances)
+        np.save(f'p2p_lending/results/aleatoric_log_variances_{dataset_name}_{random_state_for_split}.npy', aleatoric_log_variances)
         
     return auc, gmean
 
@@ -234,9 +237,13 @@ def _get_predictions(
 
     with torch.no_grad():
         for data, embedding, target in test_loader:
-            proba, epistemic_variance, aleatoric_log_variance = predict_with_mc_dropout(
-                model, data, embedding
-            )
+            if use_mc_dropout:
+                proba, epistemic_variance, aleatoric_log_variance = predict_with_mc_dropout(
+                    model, data, embedding
+                )
+            else:
+                proba, aleatoric_log_variance = predict(model, data, embedding)
+                epistemic_variance = torch.zeros_like(proba)
             probas.extend(proba.tolist())
             targets.extend(target.tolist())
             epistemic_variances.extend(epistemic_variance.tolist())

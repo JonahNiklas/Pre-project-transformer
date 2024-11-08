@@ -2,5 +2,5 @@ data/
 __pycache__/
 glove/
 model_weights/
-
+results/
 .DS_Store
