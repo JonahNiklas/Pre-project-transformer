@@ -3,9 +3,7 @@ import pandas as pd
 import torch
 
 from p2p_lending.constants import target_column
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+from p2p_lending.constants import device
 class Dataset(torch.utils.data.TensorDataset):
     def __init__(self, hard_features: pd.DataFrame, embeddings: np.ndarray) -> None:
         assert len(hard_features) == len(embeddings)

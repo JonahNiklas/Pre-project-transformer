@@ -52,10 +52,10 @@ def main() -> None:
     )  # -1 because we drop the target column and description column
 
     models: list[BaseModel] = [
-        TransformerEncoderModel(num_hard_features,2).to(device),
+        DeepFeedForwardModel(num_hard_features, 1).to(device),
+        DeepFeedForwardModel(num_hard_features, 2).to(device),
         # LogisticRegressionModel(num_hard_features).to(device),
-        # DeepFeedForwardModel(num_hard_features, 2).to(device),
-        # DeepFeedForwardModel(num_hard_features, 1).to(device),
+        # TransformerEncoderModel(num_hard_features,1).to(device),
     ]
 
     train_data, dev_data, test_data = split_data(processed_data, random_state_for_split)
@@ -92,7 +92,7 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset) -> 
     if model.output_dim == 2:
         criterion: nn.Module = LossAttenuation()
     else:
-        criterion = nn.BCELoss()
+        criterion = nn.BCEWithLogitsLoss()
     best_dev_auc: float = 0.0
     best_dev_gmean: float = 0.0
 
@@ -155,14 +155,15 @@ def evaluate(
             probas, epistemic_variances, aleatoric_log_variances, targets
         )
     )
-    auc_with_high_confidence, gmean_with_high_confidence = _get_auc_and_gmean(
-        probas_with_high_confidence,
-        targets_with_high_confidence,
-    )
-    logger.info(
-        f"{dataset_name} AUC with high confidence: {auc_with_high_confidence:.4f}"
-        f", {dataset_name} G-mean with high confidence: {gmean_with_high_confidence:.4f}"
-    )
+    if len(probas_with_high_confidence) != 0:
+        auc_with_high_confidence, gmean_with_high_confidence = _get_auc_and_gmean(
+            probas_with_high_confidence,
+            targets_with_high_confidence,
+        )
+        logger.info(
+            f"{dataset_name} AUC with high confidence: {auc_with_high_confidence:.4f}"
+            f", {dataset_name} G-mean with high confidence: {gmean_with_high_confidence:.4f}"
+        )
 
     if save_to_file:
         np.save(f'p2p_lending/results/probas_{dataset_name}_{random_state_for_split}.npy', probas)
@@ -243,14 +244,18 @@ def _get_predictions(
                 )
             else:
                 proba, aleatoric_log_variance = predict(model, data, embedding)
-                epistemic_variance = torch.zeros_like(proba)
+                epistemic_variance = torch.zeros_like(proba).squeeze()
             probas.extend(proba.tolist())
             targets.extend(target.tolist())
             epistemic_variances.extend(epistemic_variance.tolist())
             aleatoric_log_variances.extend(aleatoric_log_variance.tolist())
+            
+    probas = torch.tensor(probas)
+    if model.output_dim == 1:
+        probas = probas.squeeze(1)
 
     return (
-        torch.tensor(probas),
+        probas,
         torch.tensor(targets),
         torch.tensor(epistemic_variances),
         torch.tensor(aleatoric_log_variances),

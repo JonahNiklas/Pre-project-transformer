@@ -33,7 +33,7 @@ def predict_with_mc_dropout(
     probas = probas.mean(dim=0)
 
     if model.output_dim == 1:
-        return probas, epistemic_variance, torch.zeros_like(probas)
+        return probas, epistemic_variance, torch.zeros_like(probas).squeeze()
 
     aleatoric_log_variance = log_variances.mean(dim=0)
 
@@ -57,7 +57,7 @@ def predict(model: BaseModel, data: torch.Tensor, embedding: torch.Tensor | None
         log_variances = outputs[:, 1]
     else:
         probas = outputs
-        log_variances = torch.zeros_like(probas)
+        log_variances = torch.zeros_like(probas).squeeze()
 
     probas = nn.Sigmoid()(probas)
     return probas, log_variances
