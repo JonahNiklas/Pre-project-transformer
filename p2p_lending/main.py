@@ -231,7 +231,7 @@ def _get_predictions(
         test_dataset, batch_size=64, shuffle=False
     )
     model.eval()
-    probas = []
+    proba_list = []
     targets = []
     aleatoric_log_variances = []
     epistemic_variances = []
@@ -245,12 +245,12 @@ def _get_predictions(
             else:
                 proba, aleatoric_log_variance = predict(model, data, embedding)
                 epistemic_variance = torch.zeros_like(proba).squeeze()
-            probas.extend(proba.tolist())
+            proba_list.extend(proba.tolist())
             targets.extend(target.tolist())
             epistemic_variances.extend(epistemic_variance.tolist())
             aleatoric_log_variances.extend(aleatoric_log_variance.tolist())
             
-    probas = torch.tensor(probas)
+    probas = torch.tensor(proba_list)
     if model.output_dim == 1:
         probas = probas.squeeze(1)
 
