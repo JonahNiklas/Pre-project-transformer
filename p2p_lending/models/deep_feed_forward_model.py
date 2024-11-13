@@ -10,7 +10,6 @@ class DeepFeedForwardModel(BaseModel):
         super(DeepFeedForwardModel, self).__init__()
         self.output_dim = output_dim
         self.sequential = nn.Sequential(
-            nn.Dropout(dropout_probability),
             nn.Linear(input_dim, deep_feed_forward_hidden_units[0]),
             nn.ReLU(),
             nn.Dropout(dropout_probability),
@@ -24,12 +23,12 @@ class DeepFeedForwardModel(BaseModel):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         output: torch.Tensor = self.sequential(x)
-        output = torch.cat(
-            [
-                torch.clamp(output[:, 0:1], -20, 20),
-                torch.clamp(output[:, 1:2], -1e6, 1e6),
-            ],
-            dim=1,
-        )
+        # output = torch.cat(
+        #     [
+        #         torch.clamp(output[:, 0:1], -20, 20),
+        #         torch.clamp(output[:, 1:2], -1e6, 1e6),
+        #     ],
+        #     dim=1,
+        # )
         assert not torch.isnan(output).any()
         return output

@@ -205,7 +205,7 @@ def _get_uncertainty_correlation(
     aleatoric_log_variances: torch.Tensor,
     targets: torch.Tensor,
 ) -> tuple[float, float]:
-    predictions = (probas >= prediction_threshold).float()
+    # predictions = (probas >= prediction_threshold).float()
     aleatoric_stds = torch.sqrt(torch.exp(aleatoric_log_variances))
     epistemic_stds = torch.sqrt(epistemic_variances)
     logger.debug(
@@ -214,7 +214,7 @@ def _get_uncertainty_correlation(
     logger.debug(
         f"Epistemic mean, min & max STD [{epistemic_stds.mean():.4f}, {epistemic_stds.min():.4f}, {epistemic_stds.max():.4f}]"
     )
-    error = torch.abs(predictions - targets)
+    error = torch.abs(probas - targets)
     aleatoric_error_correlation = torch.corrcoef(torch.stack((aleatoric_stds, error)))[
         0, 1
     ].item()

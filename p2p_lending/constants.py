@@ -1,18 +1,18 @@
 from p2p_lending.transformer_config import TransformerConfig
 import torch
 
-dropout_probability = 0.3
+dropout_probability = 0.5
 mc_dropout_samples = 100
 use_mc_dropout = True
 
 target_column = "loan_status"
 year_range = (2007, 2014)
-num_epochs = 20
-batch_size = 128
+num_epochs = 50
+batch_size = 32
 train_dev_test_split = (0.8, 0.1, 0.1)
 embedding_dimension = 200
 over_sampling_ratio = 0.5
-weight_decay = 0.005
+weight_decay = 0.0
 learning_rate = 0.001
 random_state_for_split = 3213
 transformer_config = TransformerConfig.model_validate(
@@ -25,7 +25,7 @@ transformer_config = TransformerConfig.model_validate(
         "num_layers": 1,
     }
 )
-deep_feed_forward_hidden_units = (10, 10)
+deep_feed_forward_hidden_units = (64, 64)
 selected_columns = [
     "issue_d",
     "loan_status",
