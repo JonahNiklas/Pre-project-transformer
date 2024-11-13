@@ -23,8 +23,6 @@ from p2p_lending.dataset import Dataset
 from p2p_lending.get_data import get_data
 from p2p_lending.models.base_model import BaseModel
 from p2p_lending.models.deep_feed_forward_model import DeepFeedForwardModel
-from p2p_lending.models.logistics_regression_model import LogisticRegressionModel
-from p2p_lending.models.transormer_encoder_model import TransformerEncoderModel
 from p2p_lending.preprocess_data import preprocess_data
 from p2p_lending.utils.dataset import (
     create_dataset_with_embeddings,
@@ -44,35 +42,56 @@ logger.debug(f"Using device: {device}")
 
 
 def main() -> None:
-    filtered_data = get_data("p2p_lending/data/accepted_2007_to_2018q4.csv")
-    processed_data = preprocess_data(filtered_data, percentage_cases=1)
+    # filtered_data = get_data("p2p_lending/data/accepted_2007_to_2018q4.csv")
+    # processed_data = preprocess_data(filtered_data, percentage_cases=1)
+
+    processed_data = pd.read_csv("p2p_lending/data/dummy_p2p_lending_dataset.csv")
+    ood_data = pd.read_csv("p2p_lending/data/dummy_p2p_lending_ood_dataset.csv")
+    test_data = ood_data.copy()
+
+    global numerical_features
+    numerical_features = [
+        "credit_score",
+        "income",
+        "loan_income_ratio",
+    ]
+    global categorial_features
+    categorial_features = []
 
     num_hard_features = (
-        processed_data.shape[1] - 2
+        processed_data.shape[1] - 1
     )  # -1 because we drop the target column and description column
 
     models: list[BaseModel] = [
-        DeepFeedForwardModel(num_hard_features, 1).to(device),
-        DeepFeedForwardModel(num_hard_features, 2).to(device),
+        # TransformerEncoderModel(num_hard_features,2).to(device),
         # LogisticRegressionModel(num_hard_features).to(device),
-        # TransformerEncoderModel(num_hard_features,1).to(device),
+        DeepFeedForwardModel(num_hard_features, 2).to(device),
+        # DeepFeedForwardModel(num_hard_features, 1).to(device),
     ]
 
-    train_data, dev_data, test_data = split_data(processed_data, random_state_for_split)
-    train_data = oversample_minority_class(train_data)
+    train_data, dev_data = processed_data, ood_data
+    # train_data = oversample_minority_class(train_data)
     train_data, dev_data, test_data = normalize(
         train_data, dev_data, test_data, numerical_features
     )
 
     logger.info(f"Creating embeddings for train, dev and test datasets")
-    train_dataset_with_embeddings = create_dataset_with_embeddings(train_data, "train")
-    dev_dataset_with_embeddings = create_dataset_with_embeddings(dev_data, "dev")
-    test_dataset_with_embeddings = create_dataset_with_embeddings(test_data, "test")
+    # train_dataset_with_embeddings = create_dataset_with_embeddings(train_data, "train")
+    # dev_dataset_with_embeddings = create_dataset_with_embeddings(dev_data, "dev")
+    # test_dataset_with_embeddings = create_dataset_with_embeddings(test_data, "test")
+    train_dataset = torch.utils.data.TensorDataset(
+        torch.tensor(train_data.drop("loan_status", axis=1).values).float(),
+        torch.tensor(train_data["loan_status"].values).float(),
+    )
+    dev_dataset = torch.utils.data.TensorDataset(
+        torch.tensor(dev_data.drop("loan_status", axis=1).values).float(),
+        torch.tensor(dev_data["loan_status"].values).float(),
+    )
 
     for model in models:
         print("")
         logger.info(f"Training model: {model.__class__.__name__}")
-        train(model, train_dataset_with_embeddings, dev_dataset_with_embeddings)
+        train(model, train_dataset, dev_dataset)
 
     # print("")
     # logger.info("Evaluating on test set")
@@ -99,12 +118,9 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset) -> 
     for epoch in tqdm(range(num_epochs), desc="Epochs"):
         model.train()
         train_loss = 0
-        for i, (data, embedding, target) in enumerate(train_loader):
+        for i, (data, target) in enumerate(train_loader):
             optimizer.zero_grad()
-            if model.is_text_model:
-                output = model(data, embedding)
-            else:
-                output = model(data)
+            output = model(data)
             loss = criterion(output, target.unsqueeze(1))
             loss.backward()
             optimizer.step()
@@ -123,11 +139,12 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset) -> 
 
         avg_loss = train_loss / len(train_loader)
         logger.info(f"Epoch {epoch+1}/{num_epochs}: Average Loss: {avg_loss:.4f}")
-        
+
     model.load_state_dict(
         torch.load(f"p2p_lending/model_weights/{model.__class__.__name__}.pth")
     )
-    evaluate(model, dev_dataset, "Final Devset",save_to_file=True)
+    evaluate(model, training_dataset, "Trainset", save_to_file=True)
+    evaluate(model, dev_dataset, "Final Devset", save_to_file=True)
 
 
 def evaluate(
@@ -166,11 +183,23 @@ def evaluate(
         )
 
     if save_to_file:
-        np.save(f'p2p_lending/results/probas_{dataset_name}_{random_state_for_split}.npy', probas)
-        np.save(f'p2p_lending/results/targets_{dataset_name}_{random_state_for_split}.npy', targets)
-        np.save(f'p2p_lending/results/epistemic_variances_{dataset_name}_{random_state_for_split}.npy', epistemic_variances)
-        np.save(f'p2p_lending/results/aleatoric_log_variances_{dataset_name}_{random_state_for_split}.npy', aleatoric_log_variances)
-        
+        np.save(
+            f"p2p_lending/results/probas_{dataset_name}_{random_state_for_split}.npy",
+            probas,
+        )
+        np.save(
+            f"p2p_lending/results/targets_{dataset_name}_{random_state_for_split}.npy",
+            targets,
+        )
+        np.save(
+            f"p2p_lending/results/epistemic_variances_{dataset_name}_{random_state_for_split}.npy",
+            epistemic_variances,
+        )
+        np.save(
+            f"p2p_lending/results/aleatoric_log_variances_{dataset_name}_{random_state_for_split}.npy",
+            aleatoric_log_variances,
+        )
+
     return auc, gmean
 
 
@@ -237,19 +266,19 @@ def _get_predictions(
     epistemic_variances = []
 
     with torch.no_grad():
-        for data, embedding, target in test_loader:
+        for data, target in test_loader:
             if use_mc_dropout:
-                proba, epistemic_variance, aleatoric_log_variance = predict_with_mc_dropout(
-                    model, data, embedding
+                proba, epistemic_variance, aleatoric_log_variance = (
+                    predict_with_mc_dropout(model, data, None)
                 )
             else:
-                proba, aleatoric_log_variance = predict(model, data, embedding)
+                proba, aleatoric_log_variance = predict(model, data, None)
                 epistemic_variance = torch.zeros_like(proba).squeeze()
             proba_list.extend(proba.tolist())
             targets.extend(target.tolist())
             epistemic_variances.extend(epistemic_variance.tolist())
             aleatoric_log_variances.extend(aleatoric_log_variance.tolist())
-            
+
     probas = torch.tensor(proba_list)
     if model.output_dim == 1:
         probas = probas.squeeze(1)
