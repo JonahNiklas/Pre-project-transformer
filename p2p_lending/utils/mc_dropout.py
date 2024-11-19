@@ -29,7 +29,6 @@ def predict_with_mc_dropout(
         probas = outputs
 
     epistemic_variance = probas.var(dim=0)
-    # probas = nn.Sigmoid()(probas)
     probas = probas.mean(dim=0)
 
     if model.output_dim == 1:
@@ -62,7 +61,6 @@ def predict(
         probas = outputs
         log_variances = torch.zeros_like(probas).squeeze()
 
-    # probas = nn.Sigmoid()(probas)
     return probas, log_variances
 
 

@@ -7,12 +7,10 @@ from p2p_lending.constants import transformer_config, embedding_dimension
 
 class TransformerEncoderModel(BaseModel):
     def __init__(self, hard_features_dim: int, output_dim: int):
-        super(TransformerEncoderModel, self).__init__()
+        super(TransformerEncoderModel, self).__init__(output_dim)
         self.is_text_model = True
         self.hard_features_dim = hard_features_dim
-        
         self.encoder = TransformerEncoder()
-        self.output_dim = output_dim
         self.fc = DeepFeedForwardModel(hard_features_dim + embedding_dimension,self.output_dim)
 
     def forward(self, hard_features: torch.Tensor, embeddings: torch.Tensor) -> torch.Tensor:

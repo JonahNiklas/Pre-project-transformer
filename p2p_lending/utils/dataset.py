@@ -23,16 +23,16 @@ def create_dataset_with_embeddings(
 ) -> Dataset:
     try:
         embeddings = np.load(
-            f"./p2p_lending/data/{filename}_embeddings_{random_state}.npy"
+            f"./p2p_lending/data/{filename}_embeddings_{random_state}_sr_{over_sampling_ratio}.npy"
         )
-        logger.info(f"Loaded {filename} embeddings from cache")
+        logger.info(f"Loaded {filename}_embeddings_{random_state}_sr_{over_sampling_ratio}.npy embeddings from cache")
     except FileNotFoundError:
         logger.info(
-            f"{filename} embeddings not found in cache for random state {random_state}"
+            f"{filename} embeddings not found for random state {random_state} & over sampling ratio {over_sampling_ratio}. Generating new embeddings"
         )
         embeddings = embed_descriptions(df["desc"].tolist())
         np.save(
-            f"./p2p_lending/data/{filename}_embeddings_{random_state}.npy", embeddings
+            f"./p2p_lending/data/{filename}_embeddings_{random_state}_sr_{over_sampling_ratio}.npy", embeddings
         )
 
     df = df.drop(columns=["desc"])

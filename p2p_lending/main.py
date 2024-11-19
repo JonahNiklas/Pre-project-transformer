@@ -18,6 +18,8 @@ from p2p_lending.constants import (
     weight_decay,
     batch_size,
     use_mc_dropout,
+    over_sampling_ratio,
+    skip_train_load_weights
 )
 from p2p_lending.dataset import Dataset
 from p2p_lending.get_data import get_data
@@ -32,7 +34,6 @@ from p2p_lending.utils.dataset import (
     oversample_minority_class,
     split_data,
 )
-from p2p_lending.utils.loss_attenuation import LossAttenuation
 from p2p_lending.utils.mc_dropout import predict_with_mc_dropout, predict
 
 pd.options.mode.copy_on_write = True
@@ -49,10 +50,10 @@ def main() -> None:
 
     num_hard_features = (
         processed_data.shape[1] - 2
-    )  # -1 because we drop the target column and description column
+    )  # -2 because we drop the target column and description column
 
     models: list[BaseModel] = [
-        DeepFeedForwardModel(num_hard_features, 1).to(device),
+        # DeepFeedForwardModel(num_hard_features, 1).to(device),
         DeepFeedForwardModel(num_hard_features, 2).to(device),
         # LogisticRegressionModel(num_hard_features).to(device),
         # TransformerEncoderModel(num_hard_features,1).to(device),
@@ -74,13 +75,20 @@ def main() -> None:
         logger.info(f"Training model: {model.__class__.__name__}")
         train(model, train_dataset_with_embeddings, dev_dataset_with_embeddings)
 
-    # print("")
-    # logger.info("Evaluating on test set")
-    # for model in models:
-    #     evaluate(model, test_dataset_with_embeddings, "Test", save_to_file=True)
+    print("")
+    logger.info("Evaluating on test set")
+    for model in models:
+        evaluate(model, test_dataset_with_embeddings, "Test", save_to_file=True)
 
 
 def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset) -> None:
+    if skip_train_load_weights:
+        model.load_state_dict(
+            torch.load(f"p2p_lending/model_weights/{model.__class__.__name__}.pth")
+        )
+        evaluate(model, dev_dataset, "Final Devset",save_to_file=True)
+        return
+    
     train_loader = torch.utils.data.DataLoader(
         training_dataset, batch_size=batch_size, shuffle=True
     )
@@ -88,11 +96,6 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset) -> 
     optimizer = torch.optim.Adam(
         model.parameters(), weight_decay=weight_decay, lr=learning_rate
     )
-
-    if model.output_dim == 2:
-        criterion: nn.Module = LossAttenuation()
-    else:
-        criterion = nn.BCEWithLogitsLoss()
     best_dev_auc: float = 0.0
     best_dev_gmean: float = 0.0
 
@@ -105,7 +108,7 @@ def train(model: BaseModel, training_dataset: Dataset, dev_dataset: Dataset) -> 
                 output = model(data, embedding)
             else:
                 output = model(data)
-            loss = criterion(output, target.unsqueeze(1))
+            loss = model.criterion(output, target.unsqueeze(1))
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
@@ -166,10 +169,10 @@ def evaluate(
         )
 
     if save_to_file:
-        np.save(f'p2p_lending/results/probas_{dataset_name}_{random_state_for_split}.npy', probas)
-        np.save(f'p2p_lending/results/targets_{dataset_name}_{random_state_for_split}.npy', targets)
-        np.save(f'p2p_lending/results/epistemic_variances_{dataset_name}_{random_state_for_split}.npy', epistemic_variances)
-        np.save(f'p2p_lending/results/aleatoric_log_variances_{dataset_name}_{random_state_for_split}.npy', aleatoric_log_variances)
+        np.save(f'p2p_lending/results/probas_{dataset_name}_{random_state_for_split}_{over_sampling_ratio}.npy', probas)
+        np.save(f'p2p_lending/results/targets_{dataset_name}_{random_state_for_split}_{over_sampling_ratio}.npy', targets)
+        np.save(f'p2p_lending/results/epistemic_variances_{dataset_name}_{random_state_for_split}_{over_sampling_ratio}.npy', epistemic_variances)
+        np.save(f'p2p_lending/results/aleatoric_log_variances_{dataset_name}_{random_state_for_split}_{over_sampling_ratio}.npy', aleatoric_log_variances)
         
     return auc, gmean
 
