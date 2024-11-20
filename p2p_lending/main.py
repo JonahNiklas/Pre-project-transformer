@@ -254,13 +254,16 @@ def _get_predictions(
             aleatoric_log_variances.extend(aleatoric_log_variance.tolist())
             
     probas = torch.tensor(proba_list)
+    epistemic_variances = torch.tensor(epistemic_variances)
+
     if model.output_dim == 1:
         probas = probas.squeeze(1)
+        epistemic_variances = epistemic_variances.squeeze(1)
 
     return (
         probas,
         torch.tensor(targets),
-        torch.tensor(epistemic_variances),
+        epistemic_variances,
         torch.tensor(aleatoric_log_variances),
     )
 
