@@ -156,13 +156,13 @@ def evaluate(
     auc, gmean = _get_auc_and_gmean(probas, targets)
     aleatoric_error_correlation, epistemic_error_correlation = (
         _get_uncertainty_correlation(
-            probas, epistemic_variances, aleatoric_log_variances, targets
+            probas, epistemic_variances, aleatoric_log_variances, targets, dataset_name
         )
     )
 
     logger.info(
         f"{dataset_name} AUC: {auc:.4f}"
-        f", {dataset_name} G-mean: {gmean:.4f}"
+        f", G-mean: {gmean:.4f}"
         f", Aleatoric error correlation: {aleatoric_error_correlation:.4f}"
         f", Epistemic error correlation: {epistemic_error_correlation:.4f}"
     )
@@ -233,15 +233,16 @@ def _get_uncertainty_correlation(
     epistemic_variances: torch.Tensor,
     aleatoric_log_variances: torch.Tensor,
     targets: torch.Tensor,
+    dataset_name: str,
 ) -> tuple[float, float]:
     # predictions = (probas >= prediction_threshold).float()
     aleatoric_stds = torch.sqrt(torch.exp(aleatoric_log_variances))
     epistemic_stds = torch.sqrt(epistemic_variances)
     logger.debug(
-        f"Aleatoric mean, min & max STD [{aleatoric_stds.mean():.4f}, {aleatoric_stds.min():.4f}, {aleatoric_stds.max():.4f}]"
+        f"{dataset_name} Aleatoric mean, min & max STD [{aleatoric_stds.mean():.4f}, {aleatoric_stds.min():.4f}, {aleatoric_stds.max():.4f}]"
     )
     logger.debug(
-        f"Epistemic mean, min & max STD [{epistemic_stds.mean():.4f}, {epistemic_stds.min():.4f}, {epistemic_stds.max():.4f}]"
+        f"{dataset_name} Epistemic mean, min & max STD [{epistemic_stds.mean():.4f}, {epistemic_stds.min():.4f}, {epistemic_stds.max():.4f}]"
     )
     error = torch.abs(probas - targets)
     aleatoric_error_correlation = torch.corrcoef(torch.stack((aleatoric_stds, error)))[

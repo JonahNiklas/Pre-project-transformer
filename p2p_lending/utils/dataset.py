@@ -94,7 +94,7 @@ def normalize(
     dev_data: pd.DataFrame,
     test_data: pd.DataFrame,
     numerical_features: list[str],
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, StandardScaler]:
     scaler = StandardScaler()
 
     # Separate target column
@@ -127,4 +127,4 @@ def normalize(
     dev_data_scaled = pd.concat([dev_features_scaled, dev_target], axis=1)
     test_data_scaled = pd.concat([test_features_scaled, test_target], axis=1)
 
-    return train_data_scaled, dev_data_scaled, test_data_scaled
+    return train_data_scaled, dev_data_scaled, test_data_scaled, scaler
