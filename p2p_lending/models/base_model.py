@@ -9,6 +9,6 @@ class BaseModel(nn.Module):
         self.is_text_model = False
         self.output_dim = output_dim
         if output_dim == 1:
-            self.criterion = nn.BCELoss()
+            self.criterion = nn.BCELoss() if activation_function == "sigmoid" else nn.MSELoss()
         else:
             self.criterion = LossAttenuation(nn.BCELoss if activation_function == "sigmoid" else nn.MSELoss)

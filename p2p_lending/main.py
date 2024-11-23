@@ -211,12 +211,6 @@ def _get_uncertainty_correlation(
     # predictions = (probas >= prediction_threshold).float()
     aleatoric_stds = torch.sqrt(torch.exp(aleatoric_log_variances))
     epistemic_stds = torch.sqrt(epistemic_variances)
-    logger.debug(
-        f"Aleatoric mean, min & max STD [{aleatoric_stds.mean():.4f}, {aleatoric_stds.min():.4f}, {aleatoric_stds.max():.4f}]"
-    )
-    logger.debug(
-        f"Epistemic mean, min & max STD [{epistemic_stds.mean():.4f}, {epistemic_stds.min():.4f}, {epistemic_stds.max():.4f}]"
-    )
     error = torch.abs(probas - targets)
     aleatoric_error_correlation = torch.corrcoef(torch.stack((aleatoric_stds, error)))[
         0, 1
@@ -224,6 +218,46 @@ def _get_uncertainty_correlation(
     epistemic_error_correlation = torch.corrcoef(torch.stack((epistemic_stds, error)))[
         0, 1
     ].item()
+
+    error_positive = error[targets == 1]
+    aleatoric_stds_positive = aleatoric_stds[targets == 1]
+    epistemic_stds_positive = epistemic_stds[targets == 1]
+    aleatoric_error_correlation_positive = torch.corrcoef(
+        torch.stack((aleatoric_stds_positive, error_positive))
+    )[0, 1].item()
+    epistemic_error_correlation_positive = torch.corrcoef(
+        torch.stack((epistemic_stds_positive, error_positive))
+    )[0, 1].item()
+
+    error_negative = error[targets == 0]
+    aleatoric_stds_negative = aleatoric_stds[targets == 0]
+    epistemic_stds_negative = epistemic_stds[targets == 0]
+    aleatoric_error_correlation_negative = torch.corrcoef(
+        torch.stack((aleatoric_stds_negative, error_negative))
+    )[0, 1].item()
+    epistemic_error_correlation_negative = torch.corrcoef(
+        torch.stack((epistemic_stds_negative, error_negative))
+    )[0, 1].item()
+    logger.debug(
+        f"AU mean, min & max STD per class: [{aleatoric_stds_positive.mean():.4f}, {aleatoric_stds_positive.min():.4f}, {aleatoric_stds_positive.max():.4f}], [{aleatoric_stds_negative.mean():.4f}, {aleatoric_stds_negative.min():.4f}, {aleatoric_stds_negative.max():.4f}]"
+    )
+    logger.debug(
+        f"EU mean, min & max STD per clas :  [{epistemic_stds_positive.mean():.4f}, {epistemic_stds_positive.min():.4f}, {epistemic_stds_positive.max():.4f}], [{epistemic_stds_negative.mean():.4f}, {epistemic_stds_negative.min():.4f}, {epistemic_stds_negative.max():.4f}]"
+    )
+
+    logger.debug(
+        f"AU error correlation per class: {aleatoric_error_correlation_positive:.4f}, {aleatoric_error_correlation_negative:.4f}"
+    )
+    logger.debug(
+        f"EU error correlation per class: {epistemic_error_correlation_positive:.4f}, {epistemic_error_correlation_negative:.4f}\n===============================================\n"
+    )
+
+    logger.debug(
+        f"Aleatoric mean, min & max STD [{aleatoric_stds.mean():.4f}, {aleatoric_stds.min():.4f}, {aleatoric_stds.max():.4f}]"
+    )
+    logger.debug(
+        f"Epistemic mean, min & max STD [{epistemic_stds.mean():.4f}, {epistemic_stds.min():.4f}, {epistemic_stds.max():.4f}]"
+    )
     return aleatoric_error_correlation, epistemic_error_correlation
 
 
