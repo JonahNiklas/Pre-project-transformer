@@ -1,0 +1,780 @@
+% (C) Anders Kofod-Petersen
+\documentclass[a4paper]{book}
+\usepackage[english]{babel}						% Correct English hyphenation
+\usepackage[utf8]{inputenc}						% Allow for non-English letters
+\usepackage{graphicx}							% To include graphics
+\usepackage{subcaption} % For subfigures
+\usepackage{natbib}								% Correct citations
+\usepackage{multirow}
+\usepackage{booktabs}
+%\usepackage{fancyheadings}						% Nice header and footer
+\usepackage[linktocpage,colorlinks]{hyperref}			% PDF hyperlink
+\usepackage{geometry} 							% Better geometry
+\usepackage{amsmath}
+\usepackage{tabularx}
+\usepackage{longtable} % For tables spanning multiple pages
+%\usepackage[center]					% For cropping documents
+\usepackage[printonlyused]{acronym}
+
+% B5 (uncomment to convert to B5 format)
+ \geometry{b5paper}
+
+% Author
+% Fill in here, and use commands in the text. 
+\newcommand{\thesisAuthor}{Sondre Sørbye \& Jonah Wiecek}
+\newcommand{\thesisTitle}{Examining the Origins of Uncertainty in Large Language Models}
+\newcommand{\thesisType}{preparatory project}
+\newcommand{\thesisDate}{fall 2024}
+
+% PDF info
+\hypersetup{pdfauthor={\thesisAuthor}}
+\hypersetup{pdftitle={\thesisTitle}}
+\hypersetup{pdfsubject={\thesisType}}
+\hypersetup{linkcolor=black}
+\hypersetup{citecolor=black}
+\hypersetup{urlcolor=black}
+
+%Fancy headings
+%\pagestyle{fancy}
+%\pagestyle{fancyplain}
+%\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+%\renewcommand{\sectionmark}[1]{\markright{#1}{}}
+%\lhead[\fancyplain{}{\thepage}]{\fancyplain{}{\let\uppercase\relax\leftmark}}
+%\rhead[\fancyplain{}{\let\uppercase\relax\rightmark}]{\fancyplain{}{\thepage}}
+%\chead[\fancyplain{}{}]{\fancyplain{}{}}
+%\lfoot[\fancyplain{}{}]{\fancyplain{}{}}
+%\cfoot[\fancyplain{}{}]{\fancyplain{}{}}
+%\rfoot[\fancyplain{}{}]{\fancyplain{}{}}
+
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows}
+
+\tikzstyle{startstop} = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=red!30]
+\tikzstyle{process} = [rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=blue!30]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+
+% Citation format
+\bibliographystyle{apalike}
+\bibpunct{[}{]}{;}{a}{,}{,}
+
+\begin{document}
+
+%Title page (This is generate automatically from the commands above)
+\begin{titlepage}
+\noindent {\large \textbf{\thesisAuthor}}
+\vspace{2cm}
+
+\noindent {\Huge \thesisTitle}
+\vspace{2cm}
+
+\noindent \thesisType, \thesisDate 
+\vspace{2cm}
+
+\noindent Artificial Intelligence Group\\ Department of Computer and Information Science\\ Faculty of Information Technology, Mathematics and Electrical Engineering\\
+
+\vfill
+\begin{center}
+\includegraphics[width=3cm]{figs/NTNUlogo.pdf}
+\end{center}
+\end{titlepage}
+
+\thispagestyle{empty}
+
+%\cleardoublepage
+
+\frontmatter
+
+\section*{Abstract}
+
+\Acp{llm} models have become remarkably powerful, yet they still face a critical challenge of providing incorrect information. Uncertainty quantification (UQ) has emerged as a key research area, aiming to estimate the confidence associated with each model prediction. In this report, we explore significant UQ techniques. We begin by examining the various types of uncertainty that arise in AI models: epistemic and aleatoric uncertainty. We then explain two methods for epistemic uncertainty: \ac{mcdo} and \ac{mcbn}. We also explain learned loss attenuation and test-time augmentation for aleatoric uncertainty. From there, we investigate research on how UQ approaches can be effectively applied to large language models. Using the methods found in the literature review, we conduct novel experiments on a financial risk dataset. We evaluate the results and show that learned loss attenuation show great performance and that \ac{mcdo} gave very low uncertatinty measure, likely due to few outliers in the dataset. Finally, we outline potential directions for future research.
+
+% \clearpage
+\vspace{1cm}
+
+\section*{Preface}
+
+% The preface includes the facts - what type of project, where it is conducted, who supervised and any acknowledgements you wish to give.
+This is a report for TDT4501 - Computer Science, Specialization Project at NTNU Trondeim. It is a preparatory project for the master thesis in the spring semester. The research is supervised by Ahmed Abouzeid and Prof. Pinar Øztürk.
+
+\vfill
+
+\hfill \thesisAuthor
+
+\hfill Trondheim, \today
+
+%\clearpage
+
+\tableofcontents
+
+%\listoffigures
+
+%\listoftables
+
+\mainmatter
+
+\begin{acronym}
+  \acro{ai}[AI]{artificial intelligence}
+  \acro{uq}[UQ]{uncertainty quantification}
+  \acro{llm}[LLM]{large language model}
+  \acro{dff}[DFF]{deep feed forward}
+  \acro{mcdo}[MCDO]{Monte Carlo dropout}
+  \acro{mcbn}[MCBN]{Monte Carlo batch normalization}
+  \acro{tta}[TTA]{test-time augmentation}
+\end{acronym}
+
+\chapter{Introduction}
+\label{cha:Introduction}
+
+
+
+% All chapters should begin with an introduction before any sections begin. Further, each sections begins with an introduction before  subsections begin. Chapters with just one section or sections with just one sub-section, should be avoided. Think carefully about chapter and section titles as each title stand alone in the table of contents (without associated text) and should convey meaning for the contents of the chapter or section. 
+
+% In all chapters and sections it is important to write clearly and concisely. Avoid repetitions and if needed, refer back to the original discussion or presentation. Each new section, subsection or paragraph should provide the reader with new information and be written in your own words. Avoid direct quotes. If you use direct quotes, unless the quote itself is very significant, you are conveying to the reader that you are unable to express this discussion or fact yourself. Such direct quotes also break the flow of the language (yours to someone else's).   
+
+
+
+\section{Background and Motivation}\label{cit}
+\label{sec:BackgroundAndMotivation}
+\acresetall
+
+There has been tremendous progress in the development in \ac{ai} over the recent years, especially when it comes to \acp{llm}. Microsoft showed in a study that GPT-3.5 shows early signs of general intelligence \citep{bubeck2023sparksartificialgeneralintelligence}. However, these \acp{llm} still suffer from confidently giving incorrect information, where hallucination is an example \citep{mirzadeh2024gsmsymbolicunderstandinglimitationsmathematical}. Although simply training larger and larger models, such as GPT-4o and Claude, has notably diminished hallucination, it has not completely eliminated it entirely \citep{mirzadeh2024gsmsymbolicunderstandinglimitationsmathematical}. Furthermore, it has been shown that physical limitations constrain the extent to which these models can be scaled. Scaling laws indicate that beyond a certain threshold, additional training yields diminishing returns with minimal impact \citep{kaplan2020scalinglawsneurallanguage}. 
+
+Hallucinations can have serious consequences, particularly in safety-critical sectors such as risk management, healthcare, and finance. In the financial sector, the accuracy of information is essential for sound decision-making, as errors can result in significant financial losses \citep{Li2023374-largelanguagemodelsinfinanceasurvet}. Similarly, in healthcare, tools like ChatGPT demonstrate potential by streamlining tasks such as creating discharge summaries, thereby alleviating the documentation burden on medical professionals \citep{Sallam2023chatgptutilityinhealthcaresystematicreview}. However, the risk of generating inaccurate content in this context is especially concerning, as it could lead to life-threatening outcomes.
+
+A recently emerging approach to addressing the consequences of hallucination is focusing on \ac{uq}. Models equipped with \ac{uq} not only provide a predicted answer, but also include an estimate of the uncertainty associated with that prediction \citep{H_llermeier_2021}. Although \ac{uq} does not eliminate hallucinations, it enhances the reliability and practical applicability of models by enabling estimation of uncertainty for individual predictions \citep{H_llermeier_2021}.
+
+\section{Goals and Research Questions}
+\label{sec:Goals and Research Questions}
+% Your goal/objective should be described in a single sentence. In the text under you can expand on this sentence to clarify what is meant by the short goal description. 
+% The goal of your work is what you are trying to achieve. This can either be the goal of your actual project or can be a broader goal that you have taken steps towards achieving. Such steps should be expressed in the research questions. 
+% Note that the goal is seldom to build a system. A system is built to enable experiments to be conducted. The research question/goal would be the goal that the system is implemented to meet.  
+
+As explained, LLMs suffer from hallucination. In our research, our goal is to contribute to how we can limit the problems caused by hallucination with \ac{uq}.
+
+\begin{description}
+\item[Goal:] This work studies how to increase the trustworthiness of LLMs with \ac{uq}
+\end{description}
+
+In pursuit of this goal, this report addresses two research questions related to \ac{uq}. The first research question aims to understand where the uncertainty originates from and explore what methods have already been developed to measure the uncertainty. The second research question addresses how we can implement these methods and perform experiments to evaluate to what degree these methods can increase trustworthiness and transparency. This is particularly crucial for deploying such models in safety-critical domains such as the financial risk sector.
+
+\begin{description}
+\item[Research Question 1:] What are the sources of
+uncertainty in \acp{llm} and how can it be quantified?
+\end{description}
+
+\begin{description}
+\item[Research Question 2:] To what extent can existing \ac{uq} methods improve trustworthiness of state-of-the-art models in the financial risk sector, in particular \acp{llm}?
+
+\end{description}
+
+\section{Research Approach}
+\label{sec:researchMethod}
+
+To address problems related to uncertainty, it is essential to first understand its nature. To address RQ1, we will identify the factors that lead to uncertainty and establish methods to measure it. To achieve this, we will conduct a literature review, employing the snowballing technique to systematically identify existing \ac{uq} methods. \\
+
+To address RQ2, we will implement a selected set of the identified methods presented in the literature and conduct novel experiments on a banking loan application dataset with textual features \citep{ZHANG-p2p-2020100989}. We will then analyze the empirical results to evaluate the effectiveness of these \ac{uq} methods and how our experiments would allow for recommendations and trust.
+
+% What methodology will you apply to address the goals: theoretic/analytic, model/abstraction or design/experiment? This section will describe the research methodology applied and the reason for this choice of research methodology.  
+
+
+\section{Contributions}
+\label{sec:IntroContributions}
+
+Our contributions are multifaceted, including both a literature review to gather knowledge about \ac{uq} from the field of computer science, and novel experiments to obtain empirical results on the performance of \ac{uq} methods in the financial domain. These contributions, listed below, aim to provide a foundation for further research.
+
+\begin{enumerate}
+\item A comprehensive literature review of state-of-the-art methods for \ac{uq}.
+\item Empirical results evaluating the performance of the selected \ac{uq} methods in the financial sector.
+\item Insights whether these \ac{uq} methods could guide end users in the financial domain using \ac{ai} for decision making.
+\item Detailed evaluations of the empirical findings, offering insights for researchers conducting similar experiments.
+\end{enumerate}
+
+
+\section{Report Structure}
+\label{sec:reportStructure}
+
+TODO write when the report is finished
+
+* Chapter 2: 
+    - background theory e.g. different methods
+    - related work ie papers doing similar experiments to us
+* Chapter 3: method for experiments
+* Chapter 4: Experiment implementation details and results
+* Chapter 5: evaluation of the results
+
+
+\chapter{Background Theory & Related Work}\label{T-B}
+\label{cha:TheoryAndBackground}
+\acresetall
+
+In this chapter we will introduce the relevant theoretical background for \acp{llm} and Transformers but mostly focus on uncertainty in general for AI models, and look into different roots of uncertainty. We will then briefly discuss related work.
+
+\section{Background Theory}
+\label{sec:background}
+LLMs are important because... Focus on challenges!! Transparency interpretability trustworthiness etc.
+
+Transformer architecture is interesting because... deep learning black box etc.
+
+Uncertainty is interesting because this and this. 
+
+We will now briefly go into two different types of uncertainty and look at how some quantification techniques for them.
+
+\subsection{Epistemic uncertainty}
+
+There are two types of uncertainty, which are referred to as epistemic and aleatoric uncertainty \citep{OHAGAN2004239}. In short, these uncertainties come from the learning phase in a model and the training data itself, respectively. Although any learning phase in a data-driven model is highly influenced by the training data, there are significant differences between the issues caused by the learning phase itself and those arising from the nature of the data. Epistemic uncertainty originates from the learning phase and the fact that the model has incompletely learned the underlying patterns in the data, as discussed by \cite{H_llermeier_2021}. This scenario might arise if the dataset for learning is inadequate or not sufficiently representative, or if the model's architecture and the learning algorithm are inappropriate. Epistemic uncertainty is reducible and can be reduced by improving the model to better capture the patterns in the data. This is however not always possible, for example, due to restricted amounts of data or compute limitations. Furthermore, the model might excel in some parts of the data while underperform in others that are more intricate or have insufficient training data \citep{kendall2017uncertaintiesneedbayesiandeep}. Due to the variance in performance, obtaining a precise measure of the uncertainty linked to each prediction, which is closely related to performance, would be useful. \\
+
+In this section, we look into two different methods to quantify the uncertainty originating from epistemic uncertainty. \ac{mcdo} and \ac{mcbn} are two methods based on Bayesian modeling and illustrated by \cite{gal2016dropoutbayesianapproximationrepresenting} and \cite{teye2018bayesianuncertaintyestimationbatch}, respectively. Before diving further into these methods, we briefly explain the concepts behind Bayesian modeling. \\
+
+Bayesian modeling is inherently probabilistic because it assigns a prior distribution to the model parameters, reflecting our initial beliefs before observing data as seen in \cite{gelman2003bayesian}. Once we observe the data, we use Bayes' theorem to update these beliefs:
+
+\begin{equation}
+    P(\theta | \mathcal{D}) = \frac{P(\mathcal{D} | \theta) \, P(\theta)}{P(\mathcal{D})}
+\end{equation}
+
+Where:
+
+\begin{itemize}
+    \item $P(\theta | \mathcal{D})$ is the posterior distribution, representing the updated belief about the parameter $\theta$ after observing the data $\mathcal{D}$.
+    \item $P(\mathcal{D} | \theta)$ is the likelihood, which describes how likely the observed data $\mathcal{D}$ is for a given parameter value $\theta$.
+    \item $P(\theta)$ is the prior distribution, representing our initial beliefs about the parameter $\theta$ before seeing the data.
+    \item $P(\mathcal{D})$ is the evidence or marginal likelihood, which normalizes the posterior.
+\end{itemize}
+
+
+
+\[p(y_* \mid x_*, X, T) = \int_\theta p(y_* \mid x_*, \theta) p(\theta \mid X, T) \, d\theta,\]
+
+
+
+Unlike methods that provide single point estimates, Bayesian modeling predicts a full distribution over the output providing a richer representation of the possible outcomes. So to be clear this is not talking about models who have a probability distribution as their output, like a soft-max for a multi-class problem. But we are talking about a distribution over all outputs, for instance in the case of regression, we get a distribution instead of a point estimate or in the case of output being a probability vector we have a distribution over possible probability vectors. The standard deviation in this distribution can be used as a measure of epistemic uncertainty \citep{gal2016dropoutbayesianapproximationrepresenting}. The biggest downside with Bayesian modeling is its prohibitive computational cost as discussed by \cite{teye2018bayesianuncertaintyestimationbatch}, which makes it unsuitable for deep learning. Fortunately, there are less computationally expensive methods that approximate Bayesian methods. 
+
+\subsubsection{\acl{mcdo}}
+\label{sec:mcdo}
+
+The first method for approximating Bayesian methods to quantify epistemic uncertainty is \acf{mcdo} as discussed by \cite{gal2016dropoutbayesianapproximationrepresenting}. This method uses test-time dropout to approximate the posterior in Bayesian modeling. Dropout is a regularization technique in neural networks that involves randomly setting a portion of the neurons' weights to zero during training \citep{hinton2012dropoutimprovingneuralnetworkspreventing}. This can help prevent over-fitting by ensuring that the network does not rely too heavily on any single neuron. The randomly “dropped out” weights change in each training iteration, which forces the network to learn different pathways, thus making it more robust. However, in \ac{mcdo}, and in the context of epistemic \ac{uq}, dropout is used during inference or test time as well. \ac{mcdo} leverages the stochasticity of dropout to approximate the posterior distribution of Bayesian modeling. 
+
+The intuition behind \ac{mcdo} is obtaining multiple different predictions per test input by iteratively setting random parts of the weights to zero. Then, using the discrepancy in the predictions to estimate the standard deviation of the approximated probability distribution of Bayesian modeling. Higher standard deviation in the predictions will indicate higher uncertainty and is calculated as follows:
+
+
+\[
+\ac{uq}(\mathbf{Y}) = \text{STD}(\mathbf{Y}) = \sqrt{\frac{1}{T} \sum_{t=1}^T (y_t - \bar{y})^2}
+\]
+
+, where \(y_t\) is the prediction for the t-th forward pass with a unique dropout perturbation, and \(y_t\) is the mean of the predictions.
+
+\[
+\bar{y} = \frac{1}{T} \sum_{t=1}^T y_t
+\]
+
+Although, this method can seem rather arbitrary at first, \cite{gal2016dropoutbayesianapproximationrepresenting} proved mathematically that \ac{mcdo} is in fact an approximation for Bayesian modeling, and the method can therefore be used to infer epistemic uncertainty. \\
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1.0\textwidth]{pre-project/figs/mc-dropout.png}
+    \caption{Visualization of all predictions from the \ac{mcdo} method. The red dots are data the model is trained on. Every blue trace denotes predictions done with one perturbation of the network weights zeroed out.}
+    \label{fig:mc-dropout}
+\end{figure}
+
+The \ac{mcdo} method is illustrated in figure \ref{fig:mc-dropout}. A straightforward \ac{dff} regression model enhanced with \ac{mcdo} was fit to a noisy sinusoidal dataset. In this dataset both the feature and target is one dimensional. The red dots are the data the model is trained on. After training, we keep the dropout layer active during inference (dropout is traditionally turned off during inference) and generate 1000 predictions made with different perturbations of the dropout layer. In the figure, every blue trace shows predictions made for every possible value of the input feature for one perturbation of dropout. This includes predictions far away from the training data also known as out-of-distribution predictions. The figure illustrates that when making predictions further from the training data, there is a larger discrepancy in the predictions, shown by that the traces are more spread out. This discrepancy means a higher standard deviation, and thus higher uncertainty. Meanwhile, predictions near points from the training data have low discrepancy and thus high confidence. 
+
+To make it more clear how \ac{mcdo} is used to derive uncertainty measures for individual input values, we visualized the process for \(x=2.5\). Initially, we collect all 1000 predictions corresponding to \(x=2.5\). Subsequently, the mean of these predictions is computed and utilized as the point estimate. Finally, the standard deviation of the predictions is calculated and serves as an indicator of uncertainty.  
+
+\subsubsection{\acl{mcbn}} \acf{mcbn} is another method for approximating Bayesian modeling \citep{teye2018bayesianuncertaintyestimationbatch}, and works similarly to \acf{mcdo}. The primary distinction is that \ac{mcbn} utilizes batch normalization rather than dropout. Batch normalization is a regularization technique that stabilizes the training of neural networks by normalizing a layer across the batch dimension \citep{ioffe2015batchnormalizationacceleratingdeep}. This is done by normalizing the input of each layer using the following steps:
+
+1. Compute mean and variance for each mini-batch: 
+   \[ \mu_B = \frac{1}{m} \sum_{i=1}^{m} x_i \] 
+   \[ \sigma_B^2 = \frac{1}{m} \sum_{i=1}^{m} (x_i - \mu_B)^2 \]
+   where \( m \) is the batch size, \( x_i \) is each input in the batch, \( \mu_B \) is the mean, and \( \sigma_B^2 \) is the variance.
+
+2. Normalize the batch: 
+   \[ \hat{x}_i = \frac{x_i - \mu_B}{\sqrt{\sigma_B^2 + \epsilon}} \]
+   \( \epsilon \) is a small constant added for numerical stability.
+
+3. Scale and shift: learnable parameters \( \gamma \) and \( \beta \) are introduced:
+   \[ y_i = \gamma \hat{x}_i + \beta \]
+   This step allows each hidden unit to represent a different distribution, learning \( \gamma \) and \( \beta \) through training.
+
+\ac{mcbn} modifies the application of batch normalization during inference. Traditionally, in the training phase, the mini-batch provides the mean and variance. And for traditional inference, these are derived from the entire training set. In contrast, \ac{mcbn} alters this process slightly by conducting multiple inference runs and iteratively sampling from the training dataset. This approach generates a stochastic set from which the mean and variance are computed. The randomness introduced through sampling enables the approximation of the posterior. Finally, to quantify the uncertainty, we use the different predictions to approximate the variance of the posterior just like in \ac{mcdo}, shown in section \ref{sec:mcdo}
+
+Although very different in nature, both batch normalization and dropout are stochastic processes and are therefore able to create multiple predictions for the same input. Unlike \ac{mcdo} introduced by \cite{gal2016dropoutbayesianapproximationrepresenting}, \ac{mcbn} is not mathematically proven to approximate Bayesian modeling. However, \cite{teye2018bayesianuncertaintyestimationbatch} shows empirically that \ac{mcbn} is performing on par with \ac{mcdo} in terms of \ac{uq}. \ac{mcbn} is therefore a very relevant \ac{uq} technique.
+
+\subsubsection{Limitations of \acl{mcdo}}
+
+Even though \ac{mcdo} is showing empirically good results \citep{gal2016dropoutbayesianapproximationrepresenting, folgoc2021ismcdropoutbayesian}, several studies have investigated the limitations of \ac{mcdo}, and shown that the method is approximating the posterior to a limited degree. One of those critics is \cite{ianosband2016dangersofdropout} which even argues that \ac{mcdo} can be better thought of as an approximation of aleatoric uncertainty rather than aleatoric uncertainty. Furthermore, he shows that the distribution of the posterior does not concentrate as more data is gathered. This is quite concerning, meaning that additional training data would not decrease the amount of epistemic uncertainty measured. He states that the distribution has no dependence on the amount of data nor the observed variance in the data. This means that little data would also not increase the uncertainty. 
+
+\cite{folgoc2021ismcdropoutbayesian} discusses whether \ac{mcdo} is in fact a Bayesian method through mathematical reasoning and experiments comparing the estimated posterior to the true posterior. \cite{folgoc2021ismcdropoutbayesian} shows that \ac{mcdo} is not fully Bayesian because it fails to represent the true posterior distribution accurately, especially in cases with complex or multimodal distributions. 
+
+Even with harsh critics, \ac{mcdo} is still a very popular method for \ac{uq} \citep{ianosband2016dangersofdropout} and all other methods for approximating Bayesian modeling such as variational inference, all makes strong assumptions that severly limits the connection with the true posterior \citep{folgoc2021ismcdropoutbayesian}. 
+
+\subsection{Aleatoric uncertainty}
+
+As demonstrated by \cite{OHAGAN2004239}, aleatoric uncertainty originates from the uncertainty in the data itself. Known also as statistical or irreducible uncertainty, it captures the randomness inherent in outcomes due to unpredictable effects, as discussed in \cite{H_llermeier_2021}. Take, for example, a dataset generated by rolling a die. No matter how much data you gather, you can't eliminate the inherent unpredictability of each roll's result.
+
+In a classification context, imagine two classes with overlapping data points (illustrated in Figure \ref{fig:overlapping-classes}). Even the most sophisticated model with the optimal decision boundary will misclassify some points in the overlapping region. Therefore, we would want a model to express a greater aleatoric uncertainty for predictions near the decision boundary.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{pre-project/figs/overlapping classes_s0.png}
+    \caption{Overlapping classes}
+    \label{fig:overlapping-classes}
+\end{figure}
+
+When modeling uncertainty, our focus is on data dependent uncertainty, also known as heteroscedastic uncertainty. Contrary to homoscedastic uncertainty, which assumes a constant uncertainty level $\sigma$ across all data points. Heteroscedastic uncertainty models $\sigma(x_i)$, allowing the uncertainty to vary with each data point \(x_i\) \citep{kendall2017uncertaintiesneedbayesiandeep}. This approach enables us to capture what parts of the dataset are noisy or have more inherent randomness that can't be reduced. We will now look into two different methods for quantifying heteroscedastic aleatoric uncertainty.
+
+% Contrasting epistemic uncertainty could also detect areas in the data with higher uncertainty, but this is due to not having enough examples and not the data-points in this areas being ambiguous or noisy.
+\subsubsection{Learned loss attenuation}
+
+\cite{kendall2017uncertaintiesneedbayesiandeep} present a method for learning data dependent heteroscedastic uncertainty as a function of the data. The model learns the aleatoric uncertainty implicitly through a modification of the learning objective and a change of the models output. For regression in neural networks, \citep{kendall2017uncertaintiesneedbayesiandeep} achieve this by adding another neuron to the output layer. The model's output then becomes the mean $\mu_i$ and variance $\sigma(x_i)^2$ of a Gaussian representing the possible outcomes. Since there are no direct targets for the variance, $\sigma(x_i)^2$ is learned implicitly through the loss function seen in Eq. \ref{alea_loss} \citep{kendall2017uncertaintiesneedbayesiandeep}. Inputs with high predicted uncertainty will have a reduced impact on the loss function. This effect means that the uncertainty measure attenuates the loss for specific cases, hence the name Learned loss attenuation \citep{kendall2017uncertaintiesneedbayesiandeep}. \cite{kendall2017uncertaintiesneedbayesiandeep} include the last term in Eq. \ref{alea_loss} to penalize high values to prevent the model from predicting infinite uncertainty.
+
+\begin{equation}
+    \mathcal{L}_{\text{NN}}(\theta) = \frac{1}{N} \sum_{i=1}^{N} \frac{1}{2\sigma(\mathbf{x}_i)^2} \|\mathbf{y}_i - \mathbf{f}(\mathbf{x}_i)\|^2 + \frac{1}{2} \log \sigma(\mathbf{x}_i)^2
+    \label{alea_loss}
+\end{equation}
+
+
+\subsubsection{\acl{tta}}
+Another method for quantifying aleatoric uncertainty is \ac{tta} \citep{Wang-DBLP:journals/corr/abs-1807-07356}. This method revolves around augmenting the data with some augmentation $\beta$ and noise $\epsilon$ at test time. These augmentations could be rotation, scaling or flipping in the case of image data, or replacement of key words for textual data. The original data point $x$ is transformed with $n$ different augmentations and noise by a transformation $\mathcal{T}$, resulting in $x_n$. Then each $x_n$ is fed through the model. The resulting set of $y_n$ values is then used to estimate the aleatoric uncertainty by calculating the entropy or variance of the set. By applying this augmentation, they simulate different versions of the input that could reasonably represent the same underlying "true" data. If these augmentations lead to significantly different predictions, this suggests the data point is noisy or ambiguous, indicating high aleatoric uncertainty. On the other hand, if the model remains consistent across augmentations, it implies low aleatoric uncertainty, as the model seems confident about the prediction despite the added noise or variability. We can go back to the example with data points from two different classes being overlapping (figure \ref{fig:overlapping-classes}. The intuition is checking whether the input is close to a decision boundary. Imagine taking one of those points and creating N augmented versions of it with minor transformations in feature space. If the $N$ augmented points $x_n$ get many unique predictions, then it indicates that the original point $x$ is close to the decision boundary, and we assume high aleatoric uncertainty.
+
+\subsection{Modeling total uncertainty by combining epistemic and aleatoric uncertainty}
+\cite{kendall2017uncertaintiesneedbayesiandeep} propose to combine aleatoric and epistemic \ac{uq} methods to get a measure of total uncertainty. For epistemic uncertainty,  they use \ac{mcdo} to approximate the posterior and generate $T$ samples of $y$ and $\sigma^2$. This can then be combined with aleatoric uncertainty, shown in equation (\ref{equation}). The first two terms represent epistemic uncertainty calculated using the first and second moments. The third term is the average estimate of aleatoric uncertainty learned during training.
+
+\begin{equation}
+    \text{Var}(\mathbf{y}) \approx \frac{1}{T} \sum_{t=1}^{T} \hat{y}_t^2 - \left( \frac{1}{T} \sum_{t=1}^{T} \hat{y}_t \right)^2 + \frac{1}{T} \sum_{t=1}^{T} \hat{\sigma}_t^2
+    \label{equation}
+\end{equation}
+
+
+\newpage
+\section{Related Work}
+
+
+\input{pre-project/tables/related_work_table}
+
+
+\subsection{\ac{uq} in banking}
+
+% Finne et paper som omhandler uq i finans/banking
+% evt skrive at vi ikke fant det
+
+\subsection{\ac{uq} for related tasks (imaging)}
+
+% medical imaging
+\cite{Wang-DBLP:journals/corr/abs-1807-07356} introduced a comprehensive \ac{uq} framework for deep learning-based medical image segmentation. They used \ac{tta} and \ac{mcdo} for aleatoric- and epistemic \ac{uq}, respectively. Their experiments on segmentation tasks, including fetal brain MRI and brain tumor detection, demonstrated that \ac{tta} provided superior uncertainty estimations compared to \ac{mcdo} alone. Notably, TTA helped identify overconfident incorrect predictions more effectively, especially in challenging areas with ambiguous boundaries. This approach enhances the reliability of medical image segmentation by reducing overconfidence in misclassified regions and improving overall segmentation accuracy. \cite{ayhan2018testtime} used \ac{tta} to model aleatoric uncertainty in a classification task on diabetic retinopathy data. They demonstrated that \ac{tta} could identify uncertain cases, particularly around class boundaries, and improve decision reliability by referring high-uncertainty cases for further expert review. This approach improved overall diagnostic accuracy by reducing overconfident misclassifications. Compared to Bayesian methods like \ac{mcdo}, \ac{tta} offers a computationally efficient and architecture-agnostic alternative, making it suitable for real-world medical applications where uncertainty estimation is critical.
+
+\cite{kendall2017uncertaintiesneedbayesiandeep} introduced a Bayesian deep learning framework that combines epistemic and aleatoric uncertainties, specifically designed for computer vision applications like semantic segmentation and depth regression. They used learned loss attenuation for aleatoric uncertainty and \ac{mcdo} for epistemic uncertainty. Experiments on datasets like CamVid (for segmentation) and NYUv2 (for depth regression) demonstrated that combining both uncertainties yields superior performance compared to models that account for only one type. For instance, their approach set new state-of-the-art results, improving intersection-over-union scores and reducing regression errors. Additionally, they highlighted the importance of epistemic uncertainty for identifying out-of-distribution data, which is critical in safety-critical systems such as autonomous vehicles. 
+
+\cite{gal2016dropoutbayesianapproximationrepresenting} evaluated \ac{mcdo} for uncertainty quantification through experiments on regression and classification tasks. In regression, using datasets like atmospheric $CO_2$ concentrations, they demonstrated that \ac{mcdo} effectively captures epistemic uncertainty, increasing predictive variance in data-sparse regions—unlike standard dropout, which provided overconfident predictions. For classification, tested on MNIST, \acp{mcdo} stochastic forward passes quantified uncertainty which identified uncertain cases that could benefit from human review. Compared to traditional Bayesian Neural Networks, \ac{mcdo} showed competitive performance in terms of root mean square error and predictive log-likelihood while being computationally efficient. These results laid the groundwork for combining \ac{mcdo} with aleatoric methods, as seen in \cite{kendall2017uncertaintiesneedbayesiandeep}, enhancing model robustness in complex tasks.
+
+The methods used in these imaging papers are relevant to our research although methods like \ac{tta} would require some changes to be adapted on textual data compared to images. 
+
+
+\subsection{\ac{uq} in \acp{llm}}
+
+Since \acp{llm} are state of the art within natural language processing, we searched for papers studying \ac{uq} in \acp{llm}. A challenge with state-of-the-art models is that they often are closed source, so in many cases we cannot change the learning algorithm or tweak the architecture \citep{huang2023lookleapexploratorystudy}. Even with open source models where we could theoretically add methods we have discussed, auto-regressive text generation is fundamentally different from classification or regression. In these cases, measuring the uncertainty of a sentence or an entire paragraph requires approaches tailored to the complexities of language generation \citep{huang2023lookleapexploratorystudy}.
+
+\cite{huang2023lookleapexploratorystudy} performed a thorough evaluation of 3 different \ac{uq} techniques on 9 different state-of-the-art LLMs. All of these methods were black-box methods which do not require modifications of model architecture. The two first methods are both multi-inference uncertainty estimation techniques that generate a set of k sentences and looks at the discrepancy. The two methods were test-time augmentation and a sample-based (Bayesian) approach. The authors then used a metric called Variation ratio to estimate the discrepancy in the generations to quantify the uncertainty of the original output. For the test-time augmentation method, critical tokens were changed with k alternatives. For sample based methods the authors leveraged the inherit stochastic nature and temperature parameter of the LLM to get different generated outputs. The third and final method was a single-inference method where the models' confidence is derived from the probability distribution of each token. Since these LLMs have text output, the metrics need to be aggregated over all generated tokens. \cite{huang2023lookleapexploratorystudy} only modeled total uncertainty and did not distinguish between the two types of uncertainty. They evaluated the models on diverse and challenging tasks; question answering, text summarization, machine translation and code generation. Finally, the uncertainty metrics were ranked using the correlation between performance and uncertainty. Overall, sample based methods proved to be superior to the other techniques \citep{huang2023lookleapexploratorystudy}. \citeauthor{huang2023lookleapexploratorystudy} did not discuss to what degree the temperature parameter approximates the posterior distribution of a Bayesian model. The temperature parameter is probably also not implemented exactly the same across the models tested. Lastly, they used a metric called variation ratio for original prediction (VRO) to calculate the uncertainty for the sample based method. VRO uses a distance function to find a discrepancy between the generated sentences. This metric and the distance functions are choices that could limit to what extent we can capture the uncertainty among the multiple inferences.
+
+
+\cite{ling-etal-2024-uncertainty} have done a quantitative analysis of a text-to-text model (LLaMA-2) for natural language understanding tasks. They approximate Bayesian methods by generating multiple answers to construct an answer distribution representing the posterior. This distribution is made by taking the token probabilities of the critical tokens(s). From this distribution, they calculate total uncertainty and epistemic uncertainty; the aleatoric uncertainty is then derived by taking the difference of the two. Lastly, they calculate the AUC for the predictions by using the uncertainty measures as confidence for the predictions instead of the token probability. They used 5 different datasets, which covered sentiment analysis, linguistic acceptability, and topic classification. These tasks are all classification, so in theory they did not have to a use text to text model. Advantageously, so long as they can access the token probabilities, their methods could be used on black box \acp{llm} only available through APIs.
+
+\cite{ling-etal-2024-uncertainty} is of higher relevance to our work considering they evaluate on text understanding tasks, which is also what we are doing in this report. \cite{huang2023lookleapexploratorystudy} is relevant because they show the significance of Bayesian approximation methods for estimating uncertainty, and could help further answer RQ2 when it comes to text generation tasks. 
+
+% TODO: finn en artikkelen der de spør chatgpt om den er usikker
+
+
+% \section{Motivation}
+% \label{sec:no2}
+
+% Your motivation can be either application driven or technique/methodology driven. However in both cases, there will be an element of methodology driven due to the research focus of our group and the nature of a masters project.  
+% What other research has been conducted in this area and how is it related to your work? The text should clearly illustrate why your goals and research questions are important to address. This section is thus where your literate review will be presented. It is important when presenting the review that you present an overview of the motivating elements of the work going on in your field and how these relate to your proposal, rather than a list of contributors and what they have done. This means that you need to extract the key important factors for your work and discuss how others have addressed each of these factors and what the advantages/disadvantages are with such approaches. As you mention other authors, you should reference their work. Note that the reference list reflects the literature you have read and have cited. This will only be a subset of the literature that you have read.
+
+\chapter{Methodology}
+\label{sec:methodology}
+\acresetall
+
+To address our second research question—examining how \ac{uq} methods can enhance the trustworthiness of state-of-the-art models in the financial sector—we tested these methods on a binary classification task in the banking domain. Our work began by reproducing the study presented in  \cite{ZHANG-p2p-2020100989}, which utilized machine learning techniques on a dataset from LendingClub, a peer-to-peer lending service. We then extended the model by incorporating \ac{uq} capabilities. Specifically, we employed the \ac{mcdo} method to estimate epistemic uncertainty and used the learned loss attenuation method to capture aleatoric uncertainty.
+
+\section{Data}
+
+The dataset analyzed in \cite{ZHANG-p2p-2020100989} includes 71,000 loan applications from LendingClub, covering the period from 2007 to 2014. It comprises 21 different features of the application, such as the salary of the applicant and the loan amount. The dataset is divided into accepted and rejected loan applications. Among the accepted loans, the outcomes are binary, either fully repaid or defaulted, serving as the target variable for binary classification.
+
+Although the pre-processed dataset was unavailable through the link provided in the original paper, we located the raw data on Kaggle\footnote{https://www.kaggle.com/datasets/wordsforthewise/lending-club/data}. With the detailed description of the pre-processed data provided in \cite{ZHANG-p2p-2020100989}, we successfully recreated the pre-processed dataset. Details on the pre-processing steps are outlined in Section \ref{sec:experimentalResults}.
+
+\input{pre-project/tables/processed_data_examples}
+
+Table \ref{tab:example_processed_data} shows an example of one of the loan applications in the processed dataset used by \cite{ZHANG-p2p-2020100989}. Of the 21 features in the processed dataset, most are numerical or categorical. One notable feature is a textual description, where applicants add a textual description to their loan application to explain the purpose of the loan. This feature provides additional context that could potentially improve predictive performance. \cite{ZHANG-p2p-2020100989} tests this hypothesis with a specific architecture detailed in the next section.
+
+\section{Original architecture}
+
+\input{pre-project/original-architecture}
+
+To extract meaningful information from the textual loan description and enhance predictive performance, \cite{ZHANG-p2p-2020100989} employs an encoder-only transformer. The rationale for employing an encoder-only model lies in our objective, which focuses solely on enabling the model to comprehend textual data, while the absent decoder component is conventionally used for text generation, a functionality not required in this context. In other words, the encoder serves as a feature extractor, transforming text embeddings into a structured representation. These extracted features are then concatenated with the hard features (numerical and categorical), which are subsequently passed through a \ac{dff} network to reduce the dimensionality to a single dimension. The architecture outlined by \cite{ZHANG-p2p-2020100989} is illustrated in figure \ref{fig:transformer_model}.\\
+
+\section{Updated architecture for \ac{uq}}
+
+While the original architecture effectively combines textual, numerical, and categorical features to predict loan outcomes, it does not inherently account for the uncertainty associated with its predictions. To address this, we augmented the architecture proposed by \cite{ZHANG-p2p-2020100989} with methods for capturing both aleatoric and epistemic uncertainty. In this section, we will go through the novel architectural changes needed for both types of uncertainty.
+
+\subsection{Learned loss attenuation}
+\label{sec:lla}
+
+We chose learned loss attenuation for estimating aleatoric uncertainty due to its proven effectiveness in deep learning models and its straightforward implementation \citep{kendall2017uncertaintiesneedbayesiandeep}. This method requires only a minor architectural change: adding an additional output neuron in the final layer to estimate uncertainty, resulting in a negligible increase in the model's parameters. This second output neuron is a log variance instead of variance, for numerical stability. In addition, we had to use the custom loss function described in equation \ref{alea_loss} to be able to learn the target class and uncertainty simultaneously.
+
+\subsection{\acl{mcdo}}  
+
+To estimate epistemic uncertainty, we employed Monte Carlo dropout, a straightforward method requiring minimal architectural modifications. Following the approach outlined by \cite{gal2016dropoutbayesianapproximationrepresenting}, we introduced dropout layers in every layer of the \ac{dff} model. The standard transformer architecture already includes dropout layers, so no changes were made to its structure. 
+
+While the addition of dropout layers may have an impact on model performance, this architectural modification is crucial for enabling Monte Carlo dropout to function effectively. As detailed in Section \ref{sec:background}, Monte Carlo dropout leverages the stochasticity of dropout to generate multiple predictions for each input, thereby approximating the posterior distribution. As Monte Carlo dropout was introduced by \cite{hinton2012dropoutimprovingneuralnetworkspreventing} to increase the performance and robustness of AI models, the introduction of dropout could actually increase the performance of the model. However, previous empirical results show that a high value for the dropout rate is often preferred to accurately approximate the posterior \cite{verdoja2021notesbehaviormcdropout}. Finally, Monte Carlo dropout comes with a slight increase in computational cost during inference, due to the need to run \(N\) forward passes for each input. However, inference could be highly parallelized. \\
+
+\input{pre-project/uq-architecture}
+
+Figure \ref{fig:model_with_uncertainty} shows all the changes made to the original architecture. \ac{mcdo} requires the addition of dropout in every layer in the \ac{dff} model. Finally, learned loss attenuation requires another output neuron to learn the aleatoric uncertainty. 
+
+%this Chapter I assume you still to write more. Make sure to have figure illustrating whay you have changed/ extended in the original paper model architecture%
+
+\chapter{Experiments and Results}
+\label{cha:ResearchAndResults}
+\acresetall
+
+In this chapter, we are going through details on how the experiments were conducted and present the results. This includes both reproducing \cite{ZHANG-p2p-2020100989} by implementing the transformer encoder  on the Lending Club dataset, and the novel addition of learned loss attenuation and \ac{mcdo} to extend their work with \ac{uq}. 
+
+\section{Reproducing \cite{ZHANG-p2p-2020100989}}
+
+As discussed in Methodology (chapter \ref{sec:methodology}), we reproduced \textit{Credit risk evaluation model with textual features from loan descriptions for P2P lending} \citep{ZHANG-p2p-2020100989}. In this section we will explain how we were able to reproduce the processed data and compare our results with the results from the original paper. 
+
+% \subsection{Experimental Plan}
+% Dont know if this is so necessary for the reproduced paper
+\subsection{Experimental Setup}
+
+\subsubsection{Reproducing processed data}
+
+Fortunately, \cite{ZHANG-p2p-2020100989} included a thorough description of how pre-processing of the data has been done. We try to follow these exact same feature selection and pre-processing as the authors. Only the accepted loan data is used, and they are categorized as fully paid back or defaulted loans. After limiting applications to 2007-2014 and removing applications with missing values or too short a description, we end up with $70,816$ applications, which is approximately the same amount as the authors used. The authors also present two tables we could use to see if our data distribution is the same as theirs. They showed mean, median, and standard deviation values for the numerical features and counts and default percentages for the categorical features. We managed to reproduce both with some small margin of difference which did not have any significant impact on the reproduced model accuracy compared to their reported performance metrics. There were two features we had to derive from other features. We calculated the 'Credit Age' by subtracting the earliest credit line from the issue date of the application, 'Revolving to income' was derived by taking the total revolving high limit and dividing it by monthly income. Categorical features are one-hot encoded, some features are scaled to a percentage, and others are log transformed. It is unclear whether or not the numerical features were normalized in the original work. However, we found it necessary in order to receive results on par with \citet{ZHANG-p2p-2020100989}. 
+
+\subsubsection{Resampling to handle imbalanced dataset}
+The majority ($85\%$) of the loans were paid back in full, hence we needed to address the class imbalance problem. After pre-processing we split our data into training, validation and test set of $80\%$, $10\%$ and $10\%$ of the dataset, respectively. Then we performed resampling on the training set to get a balance between classes during training. The authors did not state exactly which method they used. They only refer to the work of Namwar et al. \cite{Namwar-DBLP:journals/corr/abs-1805-00801} and Xia et al. \cite{XIA201730}, which includes a variety of different methods, making it unclear which of those methods were used. 
+
+As a result, we adopted a hybrid approach, introducing a tunable hyper-parameter called \textit{over\_sampling\_ratio}, which ranges from 1 to 0. This parameter allows us to adjust between over-sampling, under-sampling, or a combination of both. To illustrate, consider a training split where 80\% of the data consists of 48,380 positive cases (fully paid loans) and 8,272 negative cases (loan defaults). For training, we aim for class balance by either under-sampling the positives or over-sampling the negatives. For example, if the \textit{over\_sampling\_ratio} is set to $0.5$, we would balance the dataset by applying equal parts under-sampling and over-sampling. Specifically, we would reduce the majority class (positives) from 48,380 to 28,326 by removing 20,054 cases and increase the minority class (negatives) from 8,272 to 28,326 by duplicating samples. This balanced dataset ensures that both classes have equal representation during training.
+
+\subsubsection{Hyperparameters used}
+\label{sec:reproducing_hyperparameters_used}
+For the textual features we, like the authors, use a pre-trained glove word embedding \citep{pennington-etal-2014-glove}. The authors did not specify what dimension they used for the embeddings, so we explored different options. The pre-trained glove for english language has embeddings of sizes 50, 100, 200 and 300. We had to rule out both 100 and 300 dimensional embeddings because PyTorch's TransformerEncoderLayer class requires the embedding dimension to be divisible by the number of heads. And the number of heads used by the authors is 8. We ended up choosing 200 dimensions since it had much better performance than 50.
+
+For the model parameters, the logistic regression model is completely standard. The deep feed forward model has two hidden layers of 10 neurons each. Each layers uses ReLU as an activation function and dropout for regularization. The activation function of the output neuron is the sigmoid function.
+
+The transformer encoder uses the same parameters as the authors; 1 layer(s), 5 heads and a hidden dimension of 50. For otherwise unspecified parameters, we used a dropout rate of 0.1 and max sequence length of 75. Max sequence length of 75 was chosen to reduce the complexity, and most data points (80\%) already have a description length lower than 75. 
+
+We performed a small hyper-parameter search around the authors' ideal hyper-parameters and used the validation set for early stopping during training. The optimal hyperparameters found are a weight decay of $0.005$ and a learning rate of $0.0005$.
+
+\subsection{Results of Reproducing \cite{ZHANG-p2p-2020100989}}
+In table \ref{tab:paper_auc} you can see the results presented by the authors, comparing the transformer model \textbf{TE} with several baseline methods. In table \ref{tab:reproduced_auc} you can see our reproduced results showing AUC and G-mean on par with the authors' results and within statistical significance.
+\input{pre-project/tables/reproduced_table}
+
+In our testing, both the logistic regression model and the Deep Feed Forward network performed very well, even with only using the hard features. This shows that this dataset maybe does not benefit that much from using the loan descriptions. We will discuss this possible limitation in section \ref{sec:Discussion}.
+
+\section{Adding UQ}
+Now we move on to this semester's main contribution, i.e. adding \ac{uq} to the encoder-only transformer applied to a P2P-lending dataset.
+
+\subsection{Experimental Plan}
+\label{sec:experimentalPlan}
+
+% The plan should include what experiments or series of experiments are planned and what question the individual or set of experiments aim to answer. Such questions should be connected to your research questions so that in the evaluation of your results you can discuss the results wrt to the research questions.  
+
+
+This experiment will consist of applying a method for aleatoric- and epistemic \ac{uq} to the reproduced model. We will then evaluate the \ac{uq} methods in isolation and combination. We will enhance the model by generating metrics for aleatoric and epistemic uncertainty, more specifically a standard deviation for each data point.
+
+In order to evaluate the uncertainty measures, we will study the correlation between the error and uncertainty. This performance metric is often used for \ac{uq} and is what we saw in the related work of \cite{huang2023lookleapexploratorystudy} and \cite{Wang-DBLP:journals/corr/abs-1807-07356}. If the measures correlate with the error, then a system could use the uncertainty measure as a flag for when a case is too difficult to classify and a human is needed. If they don't correlate, then this uncertainty measure won't increase the trustworthiness of the model since we can't base decisions off of it.  Secondly, we are also interested in comparing the aleatoric and epistemic uncertainty to investigate a cause of the uncertainty.
+
+For aleatoric uncertainty, we want to use learned loss attenuation. In practice, the implementation requires only a minor adjustment: adding an extra output neuron to the model to predict both the class and the log variance. This additional output is then incorporated into the loss function, as shown in Equation \ref{alea_loss}.
+
+\ac{mcdo} however requires some more changes. We need to change the \ac{dff} module of the network to include more dropout layers. The hyper-parameters for dropout in the transformer itself and the \ac{dff} network also should be increased. Crucially, dropout layers are normally disabled during inference, but we need to enable them; and lastly, for each batch, we need to run it through the model N times instead of 1 to get a set of samples for each datapoint.
+
+\subsection{Experimental Setup}
+\label{sec:experimentalSetup}
+
+The experiments are implemented in PyTorch and run on a desktop computer with an NVIDIA RTX 3060 Ti for parallelization using CUDA. 
+
+We used most of the same hyperparameters as described in the reproduction of the paper (section \ref{sec:reproducing_hyperparameters_used}). There were no changes to the architecture or the model size, except for that we have two output neurons in the case of learned loss attenuation. Additionally, the dropout rate was increased to $0.3$ for the dropout within the positional encoder of the transformer, and the dropout layers of the \ac{dff} module was increased to $0.4$. However, we were required to change the loss function as described in section \ref{sec:lla}. 
+
+We used a batch size of $64$, weight decay of $0.001$ and learning rate of $0.0001$. Results were gained from training for a maximum of 20 epochs still using early stopping on the validation set. The different setups were ran 5 times to account for variance in weight initialization and stochasticity of the learning algorithm.
+
+
+\subsection{Experimental Results}
+\label{sec:experimentalResults}
+
+% Results should be clearly displayed and should provide a suitable representation of your results for the points you wish to make. Graphs should be labeled in a legible font and if more than one result is displayed on the same graph then these should be clearly marked.   Please choose carefully rather than presenting every results. Too much information is hard to read and often hides the key information you wish to present. Make use of statistical methods when presenting results, where possible to strengthen the results.  Further, the format of the presentation of results should be chosen based on what issues in the results you wish to highlight. You may wish to present a subset in the experimental section and provide additional results in the appendix.
+
+\input{pre-project/tables/uq_tables}
+
+In Table \ref{tab:test_uq} you can see the impact of adding \ac{uq} methods to the model. We see no real significant change in performance metrics AUC and G-mean. This means that the architectural changes made did not limit the performance of the model. \\
+
+Table \ref{tab:test_uq_correlation} shows that the mean predicted aleatoric uncertainty is $0.8$. In other words, for each data point, the model predicts a class and an uncertainty or standard deviation $\sigma$. The average of all these for the test set is $0.8$ with a small deviation across multiple trained models. This value is hard to interpret since it seems very high considering the model prediction output is bound by sigmoid. But interestingly this uncertainty measure correlates with the error with a coefficient of $0.55$. So even though the values are high, higher values tend to lead to more misclassifications. To demonstrate the advantage of this correlation, a substantial performance increase is observed when only evaluating the least uncertain data points, based on aleatoric \ac{uq}, as presented in Table \ref{tab:test_50uq}. This correlation can also be seen in figure \ref{fig:sub1} where the roc-curve is shown for different subsets of the test set using gradually fewer of the most certain points, i.e. those with the lowest aleatoric \ac{uq} score. For aleatoric uncertainty, you can see that as we decrease the test set to only the most confident data points, the curve moves toward the top left, especially increasing the true positive rate. We will get back to this bias towards the positive class.
+
+
+\begin{figure}[h!]
+    \centering
+    % First row
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{pre-project/figs/ROC_curve_AEU1t_aleatoric_uncertainty.png}
+        \caption{ROC curve for different subsets of test set using Aleatoric \ac{uq} to select subset}
+        \label{fig:sub1}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{pre-project/figs/ROC_curve_AEU1t_epistemic_uncertainty.png}
+        \caption{ROC curve for different subsets of test set using Epistemic \ac{uq} to select subset}
+        \label{fig:sub2}
+    \end{subfigure}
+    
+    % Second row
+    \vspace{0.5cm}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{pre-project/figs/AUC_AEU1t_aleatoric.png}
+        \caption{AUC of the curves in \ref{fig:sub1}}
+        \label{fig:sub3}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{pre-project/figs/AUC_AEU1t_epistemicpng.png}
+        \caption{AUC of the curves in \ref{fig:sub2}}
+        \label{fig:sub4}
+    \end{subfigure}
+    
+    \caption{Results from run 1 with Aleatoric and Epistemic \ac{uq} combined}
+    \label{fig:main}
+\end{figure}
+
+The mean epistemic uncertainty, however, is 0.063, which means that the model is detecting almost no epistemic uncertainty. Another interesting observation is the fact that there is a negative correlation. This is somewhat unexpected, since it means for cases where the stochastic model tends to produce similar outputs it tends to misclassify more. However, it becomes much more interesting when looking separately at each class in Figure \ref{fig:EU_per_class_5t}. When evaluating the predictions, we usually see a higher EU correlation for the negative class than positive class, this could be interpreted as the uncertainty metric better capturing the uncertainty around data we don't have that much of. This is usually what epistemic uncertainty is good at: detecting cases where we need more data in order to increase our certainty and performance \citep{H_llermeier_2021}. However, in our results, the negative class consistently has a higher correlation than the positive, but it is still quite unstable and not always positive. In the validation and test set, there is no resampling, so we have a very imbalanced dataset with the majority of the loans being paid back. And hence, the negative correlation for the majority class outweighs the positive correlation for the minority class.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\linewidth]{pre-project//figs/EU_per_class_5t.png}
+    \caption{Epistemic uncertainty per class}
+    \label{fig:EU_per_class_5t}
+\end{figure}
+
+To further look into this, we study the correlation between AU and EU to both classes in the combined run. After multiple runs, we get the following result in \ref{tab:correlation_class}. It now becomes clear to us that we see the inverse effect on aleatoric uncertainty. 
+
+% evaluation part
+aleatoric uncertainty has the best correlation with the error on the majority class, loans fully paid back. Even though we have balanced the training set it seems like the model has some bias towards the majority class. This could come from the model not being able to accurately capture the uncertainty. But if we take this as truth what does it say about the data? The features that normally show ambiguity around a data point from the majority class rather shows confidence for the minority class. This could be interpreted as that the aleatoric uncertainty to some degree is higher the more certain we can be that it is a defaulted loan. 
+
+The negative correlation between epistemic uncertainty and error could be explained by overconfidence. If the model has learned the characteristics of the positive cases in a robust way it might have very low variance when using dropout during inference even though the model has problem accurately classifying some of the paid back loans. The defaulted loans may have more challenging or complex patterns so the increase in variance in the Monte Carlo samples correlates more with difficult cases. Even with a balanced training set, the oversampling of the negative cases might lead to the model not being able to capture the generalized data distribution as well for the minority class. However, as can be seen in \ref{tab:correlation_class} this correlation is pretty inconsistent in our experiments with a standard deviation of $0.44$. 
+
+\begin{table}[h!]
+\centering 
+\caption{Correlations per class}
+\vspace{2mm}
+\label{tab:correlation_class}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Measures} & \textbf{Positive class} & \textbf{Negative class}  \\
+\midrule
+AU error correlation &$0.75\pm0.13$&$-0.44\pm0.34$\\
+EU error correlation &$-0.70\pm0.16$&$0.38\pm 0.44$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\chapter{Evaluation and Conclusion}
+\label{cha:evaluationAndConclusion}
+\acresetall
+
+In this final chapter, we will evaluate the results outlined in the previous chapter and investigate the reasons behind the results. In the discussion section, we will examine our findings in a broader context. Finally, we will suggest possible directions for future research.
+
+\section{Evaluation}
+\label{sec:Evaluation}
+
+% When evaluating your results, avoid drawing grand conclusions, beyond that which your results can infact support. Further, although you may have designed your experiments to answer certain questions, the results may raise other questions in the eyes of the reader. It is important that you study the graphs/tables to look for unusual features/entries and discuss these aswell as discussing the main findings in the results. 
+
+Our results show that epistemic uncertainty is low. In addition, we are seeing a negative correlation between epistemic uncertainty and the error. To evaluate this and find out why, we have created two dummy datasets. The first one is very simple with binary data where the data points are more likely to be 0 when x is close to 0, see figure \ref{fig:binary_dummy_dataset_w_and_wo_sigmoid}. The second dummy dataset is more complicated where we have three features that are similar to the features of the P2P lending dataset. Looking at results of these dummy datasets we are hoping to get a better understanding of our previous results. 
+
+\subsection{Binary dummy dataset}
+
+The observed negative correlation between epistemic uncertainty and the error is puzzling. We hypothesize that this may stem from using sigmoid as an activation function in the final layer. Sigmoid has a saturation effect, where high input logits are capped at 1 and low inputs are capped at 0. This could mean that for out-of-distribution cases, logits may be pushed to extreme values, causing the output to converge to 0 or 1. Consequently, when using sigmoid, \ac{mcdo} might paradoxically reduce uncertainty for out-of-distribution cases, as extreme logits produce unanimous sigmoid outputs. \\
+
+
+\begin{figure}[h!]
+    \centering
+    % First image
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{pre-project/figs/binary-data-without-sigmoid.png}
+        \caption{Without sigmoid}
+    \end{subfigure}
+    \hfill % Space between images
+    % Second image
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{pre-project/figs/binary-data-with-sigmoid.png}
+        \caption{With sigmoid}
+    \end{subfigure}
+    \caption{Overall caption for the figure}
+    \label{fig:binary_dummy_dataset_w_and_wo_sigmoid}
+\end{figure}
+
+To investigate this hypothesis further, we created a dummy dataset with binary labels. Examples close to \(X=0\), had a higher likelihood to have \(Y=1\). Then, we trained a simple model with a few layers and dropout on each layer and ran used Monte Carlo Dropout to get a measure for epistemic uncertainty. This can be shown in figure \ref{fig:binary_dummy_dataset_w_and_wo_sigmoid}, where the red dots are training examples and the blue traces are the different predictions. Without sigmoid, the results are as expected with higher discrepancy between the different traces the further from \(X=0\) (shown in Figure\ref{fig:binary_dummy_dataset_w_and_wo_sigmoid} a). When we add sigmoid, we get strange results as shown in figure \ref{fig:binary_dummy_dataset_w_and_wo_sigmoid} b. We see a constant standard deviation among the predictions for all the out-of-distribution x-values. All the traces are fixed at \(Y=1\) except for a few traces. This is because sigmoid is limiting the amount of uncertainty the model possibly can output.
+
+These results could indicate that \ac{mcdo} is unsuitable when using sigmoid on the final layer, even though these tests are done on a very simple dataset. \cite{gal2016dropoutbayesianapproximationrepresenting} had similar results when using tanh, which has saturation properties similar to sigmoid. 
+
+\input{pre-project/tables/uq_no_sigmoid}
+
+The promising results of removing the sigmoid activation function raised expectations of improved epistemic uncertainty measures in the P2P lending dataset. However, as seen in Table \ref{tab:binary_dummy_dataset_results}, removing sigmoid did not improve the epistemic \ac{uq} measures on this dataset. This unexpected outcome motivated an additional dummy dataset to gain further insights.
+
+\subsection{P2P lending dummy dataset}
+
+Monte Carlo dropout should be able to give high uncertainty measure for out-of-distribution data \cite{gal2016dropoutbayesianapproximationrepresenting}. To further investigate the low epistemic uncertainty measure, we created a dummy dataset similar to the P2P lending dataset. We created the dataset such that we know there is a lot of out-of-distribution data (OOD) in the test set. 
+
+The in-distribution dataset consists of 1,000 samples and was generated as follows:
+\begin{itemize}
+    \item \textbf{Features:}
+    \begin{itemize}
+        \item \textit{Credit scores:} Random integers uniformly sampled between 300 and 850.
+        \item \textit{Incomes:} Random integers uniformly sampled between \$20,000 and \$150,000.
+        \item \textit{Loan amounts:} Random integers uniformly sampled between \$1,000 and \$50,000.
+        \item \textit{Loan-to-income ratios:} Computed as the ratio of loan amounts to incomes.
+    \end{itemize}
+    \item \textbf{Labels:}
+    \begin{itemize}
+        \item Default (1) if the loan-to-income ratio exceeds 0.2 and the credit score exceeds 600; non-default (0) otherwise.
+        \item Added noise: Labels were flipped with a probability of 20\% to introduce uncertainty.
+    \end{itemize}
+\end{itemize}
+
+The OOD dataset contains 200 samples and was generated as follows:
+\begin{itemize}
+    \item \textbf{Features:}
+    \begin{itemize}
+        \item \textit{Credit scores:} 
+        \begin{itemize}
+            \item 50\% sampled between 50 and 100 (extremely low credit scores).
+            \item 50\% sampled between 1,000 and 1,500 (extremely high credit scores).
+        \end{itemize}
+        \item \textit{Incomes:}
+        \begin{itemize}
+            \item 50\% sampled between \$5,000 and \$10,000 (low incomes).
+            \item 50\% sampled between \$200,000 and \$400,000 (high incomes).
+        \end{itemize}
+        \item \textit{Loan amounts:}
+        \begin{itemize}
+            \item 50\% sampled between \$80,000 and \$100,000 (high relative to income).
+            \item 50\% sampled between \$500 and \$800 (low relative to income).
+        \end{itemize}
+        \item \textit{Loan-to-income ratios:} Computed as the ratio of loan amounts to incomes.
+    \end{itemize}
+    \item \textbf{Labels:}
+    \begin{itemize}
+        \item Default (1) with 20\% probability for low-credit-score samples and 80\% probability for high-credit-score samples.
+    \end{itemize}
+\end{itemize}
+
+\begin{table}[h!]
+\centering
+\caption{Comparison of epistemic uncertainty and error correlation with and without sigmoid}
+\label{tab:dummy_uncertainty_comparison_in_out_distribution}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+\textbf{Metric}                           & \textbf{Without Sigmoid} & \textbf{With Sigmoid} \\ \midrule
+\textbf{Average epistemic uncertainty (in-distribution)}  & 0.011           & 0.007          \\
+\textbf{Average epistemic uncertainty (OOD)}             & \textbf{0.728}             & 0.126          \\
+\end{tabularx}
+\end{table}
+
+We trained a simple feed forward model with two layers both with and without sigmoid as the final layer. The results are shown in table \ref{tab:dummy_uncertainty_comparison_in_out_distribution}. For both with and without sigmoid, we see that the average epistemic uncertainty is higher for in-distribution data than out-of-distribution data. However, the uncertainty with sigmoid of 0.126 is still low. The results without sigmoid are more in line with what we would expect. 
+
+\begin{table}[h!]
+\centering
+\caption{Comparison of epistemic uncertainty and error correlation with and without sigmoid}
+\label{tab:dummy_uncertainty_correlation}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+\textbf{Metric}                           & \textbf{Without Sigmoid} & \textbf{With Sigmoid} \\ \midrule
+\textbf{Epistemic Error Correlation (in-distribution)}   & 0.033                & 0.014                \\
+\textbf{Epistemic Error Correlation (OOD)}              & \textbf{0.608}                 & 0.030                \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+Table \ref{tab:dummy_uncertainty_correlation} shows the correlation between uncertainty and error. For the uncertainty measure to be valuable, we would expect uncertainty and error to be highly correlated. Without sigmoid, the correlation is very high measuring at \(0.608\). With sigmoid, the uncertainty is around 0. This shows that epistemic can reveal out-of-distribution data for a dataset very similar to the P2P lending dataset. 
+
+\begin{table}[h!]
+\centering
+\caption{Comparison of predicted uncertainty for different scenarios}
+\label{tab:dummy_p2p_examples}
+\begin{tabularx}{\textwidth}{@{}lXXXXX@{}}
+\toprule
+\textbf{Scenario} & \textbf{Credit Score} & \textbf{Income} & \textbf{Loan Income Ratio} & \textbf{Uncertainty} \\ \midrule
+In-Distribution    & 500                   & 85,000          & 0.35                       & 0.0531                  \\
+OOD (Under)        & 75                    & 7,500           & 12                         & 1.0985                  \\
+OOD (Over)         & 1250                  & 300,000         & 0.0022                     & 0.4505                  \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+Finally, we did a brief quantitative study of the dummy dataset by looking through a couple of predictions. As expected, we saw low uncertainty for in-distribution predictions and high uncertainty for out-of-distribution predictions, this were true both for out-of-distribution data with both very strong loan application (over) and very weak application (under). In table \ref{tab:dummy_p2p_examples}, we see a few prediction examples. We have chosen the mean features for in-distribution, out-of-distribution (weak applications) and out-of-distribution (strong applications). 
+
+\subsection{Inspecting P2P lending for Outliers}
+
+Given that we have seen Monte Carlo Dropout is able to output high uncertainty and error correlation for out-of-distribution data, we would like to inspect the P2P lending dataset to understand why we do not get the same results here. \\
+
+\input{pre-project/tables/outliers_table}
+
+We used outlier detection with three standard deviations to find the fraction of examples that are outliers for every feature. As we see in table \ref{tab:outliers_fraction}, all the features have a remarkably low fraction of outliers. In addition, we detected zero outliers when using the Mahalanobis distance \citep{mahalanobis}, that takes the co-variate matrix of the whole dataset into account. This could explain why the epistemic uncertainty measures are so low in the P2P lending dataset. 
+
+\section{Discussion}
+\label{sec:Discussion}
+% Discussion, merits and limitations
+
+First of all, the choice of dataset might not have been ideal for testing learned loss attenuation and MC-dropout on a transformer architecture. The addition of the transformer encoder, compared to just using the hard features with the benchmark models, did not lead to a significant increase in performance. We consider this to be a limitation when it comes to applying \ac{uq} methods to the textual features we had so far. The uncertainty measured probably mostly stems from the feed-forward parts of the network rather than from the transformer parameters itself. With a different dataset we could also remove some of the \ac{dff} parts of the network.
+
+Monte Carlo Dropout showed promise on the dummy datasets but we were unable to reproduce the positive correlation in the p2p lending dataset. Limitations to this method could be the lack of outliers in the dataset, sigmoid limiting the variance, and the class imbalance making the model overconfident on positive cases. 
+
+
+% Limitations
+% * transformer did not increase performance
+% * no outliers in dataset
+% * mc dropout did however show promise in dummy dataset
+% * we have shown that sigmoid could possible interfere with mc dropout
+% * Learned loss attenuation showed promise and dataset has lot of noise in data
+
+
+
+Learned loss attenuation showed a strong positive correlation between the estimated aleatoric uncertainty and the error. This is promising results that could enable systems to use this uncertainty metric as a flag for when a human is needed for a second opinion. 
+
+However when studying the classes alone in Table \ref{tab:correlation_class} we saw a negative correlation for the minority class, which could invalidate our results. The positive correlation between error and aleatoric uncertainty could simply be due to a positive correlation between the certainty and the predicted output. Imagine the model always gives a higher certainty the higher the models output is. This will lead to predictions around 1, with the lowest error for the positive class, having a very low uncertainty. And predictions around 0.5 which have a higher error will get a higher uncertainty. Hence a positive correlation for the positive class. For the negative class however, the lower probability the model outputs, the lower error we have. But if the certainty is linear with this probability we will have the highest uncertainty for the predictions close to 0 and the lowest uncertainty for predictions close to 0.5. Which will lead to a strong negative correlation for the negative class.
+
+This simple nature of the estimated aleatoric uncertainty could be due to that the model architecture itself might not be best suited for our implementation of Learned loss attenuation. The model has only 10 weights which are not shared with the predicted class neuron because of the final hidden layer size being 10. Maybe it does not have enough expressive power to capture the uncertainty without crippling the prediction. And maybe it therefore learns a too simple relation between the predictions and uncertainty. Future work should test different model configurations to study the impact on the \ac{uq} methods performance. And further investigation could be done by comparing the weights of the last layer between output and aleatoric uncertainty to see if the model has learned a too naive representation.
+
+% \section{Contributions}~\label{cont}
+% \label{sec:Contributions}
+% What are the main contributions made to the field and how significant are these contribution.  
+
+* summarized important methods for \ac{uq}
+* shown that sigmoid might limit mc dropout
+* shown that epistemic uncertainty is in fact able to detect out-of-distribution cases
+* tested learned loss attenuation on transformer
+
+
+In our experiment we have studied whether learned loss attenuation and MC dropout can increase a transformer based classifier's trustworthiness in the p2p lending domain. This is a step towards studying the impact of 
+
+\section{Future Work}
+\label{sec:futureWork}
+
+% Consider where you would like to extend this work. These extensions might either be continuing the ongoing direction or taking a side direction that became obvious during the work. Further, possible solutions to limitations in the work conducted, highlighted in ~\ref{sec:Discussion} may be presented. 
+
+This report motivates some future research on \ac{uq} specifically within transformer architectures. The limited performance gain from using the loan descriptions in the lending club dataset through the transformer encoder has restricted our ability to thoroughly evaluate the applicability of \ac{uq} methods on this architecture. Future work is therefore needed to assess how \ac{uq} methods can be applied to the transformer specifically. 
+
+Furthermore, \ac{mcdo} showed subpar results for measuring epistemic uncertainty. We showed that this is highly likely due to no outliers in our dataset. However, in future work it is worth trying alternative methods. One popular method is variational inference. Another approach could be deep ensembles. Specifically, \cite{ianosband2016dangersofdropout} proposed an interesting method called the Bootstrap ensemble which trains multiple models on different subsets of the training dataset with added noise. For certain choices of sampling/perturbations this process is precisely equivalent to Bayesian inference \citep{ianosband2016dangersofdropout}. 
+
+This semester's work has been the first step into studying uncertainty quantification for \acp{llm}. We still have further research we want to conduct on more advanced models and architectures. Many of modern LLMs are decoder-only transformers that generate text. Text generation is quite different to just text understanding. We are then interested in quantifying uncertainty across entire paragraphs of generated text, rather than individual tokens or sentences. Whether or not the methods explored in this report can be transferred over to text output will require further testing. We have looked into the use of multi-inference and single inference methods for \ac{uq} in \acp{llm}. However not within the focus of aleatoric- and epistemic uncertainty and finding the cause of uncertainty. 
+
+\backmatter
+
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliography{bibtex/bibliography}
+
+% \chapter{Appendices}
+% \label{cha:appendices}
+
+
+\end{document}
