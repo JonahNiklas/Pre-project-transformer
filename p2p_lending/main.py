@@ -292,7 +292,8 @@ def _get_predictions(
 
     if model.output_dim == 1:
         probas = probas.squeeze(1)
-        epistemic_variances = epistemic_variances.squeeze(1)
+        if use_mc_dropout:
+            epistemic_variances = epistemic_variances.squeeze(1)
 
     return (
         probas,
